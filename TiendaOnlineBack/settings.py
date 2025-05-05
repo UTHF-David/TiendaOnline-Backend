@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'corsheaders',
     'TiendaOnline',
+    'coreapi',
     
 ]
 
@@ -148,6 +149,7 @@ REST_FRAMEWORK = {
  'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.coreapi.AutoSchema',
 
 }
+
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
