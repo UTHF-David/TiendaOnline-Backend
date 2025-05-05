@@ -25,9 +25,6 @@ SECRET_KEY = 'django-insecure-(7*ji_&j0j!b2*+n86_@q^96g2^&wfex6psuoz25r6#&%^(p$-
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
-
-
 # Application definition
 
 INSTALLED_APPS = [
@@ -130,6 +127,12 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     
 ]
+
+CORS_ALLOW_ALL_ORIGINS = True
+
+ALLOWED_HOSTS = ['backend-ny2d.onrender.com', 'localhost', '127.0.0.1']
+
+
 
 #Metodos permitidos para la api
 CORS_ALLOW_METHODS = [
