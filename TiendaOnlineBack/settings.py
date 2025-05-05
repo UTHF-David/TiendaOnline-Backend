@@ -25,6 +25,8 @@ SECRET_KEY = 'django-insecure-(7*ji_&j0j!b2*+n86_@q^96g2^&wfex6psuoz25r6#&%^(p$-
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
+ALLOWED_HOSTS = ['https://tiendaonline-backend-yaoo.onrender.com/', 'localhost', '127.0.0.1']
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -121,19 +123,25 @@ USE_I18N = True
 
 USE_TZ = True
 
+
+# Static files (CSS, JavaScript, Images)
+# https://docs.djangoproject.com/en/5.2/howto/static-files/
+
+STATIC_URL = 'static/'
+
+# Default primary key field type
+# https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
+
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
 # #quien puede acceder a la api
 CORS_ALLOWED_ORIGINS = [
-    "https://tiendaonline-backend-yaoo.onrender.com/",
-    "https://comforting-rolypoly-9bb62e.netlify.app", 
+    "https://tiendaonline-backend-yaoo.onrender.com/",    
     "http://localhost:5173",
     
 ]
 
 CORS_ALLOW_ALL_ORIGINS = True
-
-ALLOWED_HOSTS = ['https://tiendaonline-backend-yaoo.onrender.com/', 'localhost', '127.0.0.1']
-
-
 
 #Metodos permitidos para la api
 CORS_ALLOW_METHODS = [
@@ -150,16 +158,6 @@ REST_FRAMEWORK = {
 
 }
 
-
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.2/howto/static-files/
-
-STATIC_URL = 'static/'
-
-# Default primary key field type
-# https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
-
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
