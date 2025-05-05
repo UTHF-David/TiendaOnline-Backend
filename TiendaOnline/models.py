@@ -30,6 +30,25 @@ class Producto(models.Model):
         blank=True,
         null=True
     )
+    tamaño = models.CharField(
+        max_length=3,
+        choices=[('S', 'S'), ('M', 'M'), ('L', 'L'), ('XL', 'XL'), ('XXL', 'XXL')],
+        verbose_name='Tamaño',
+        help_text='Tamaño del producto',
+        blank=True,
+        null=True
+    )
+    colores = models.CharField(
+        max_length=50,
+        choices=[('blanco', 'Blanco'), ('rojo', 'Rojo'), ('azul', 'Azul')],
+        verbose_name='Colores',
+        help_text='Colores disponibles del producto',
+        blank=True,
+        null=True
+    )
+
+    def formatted_price(self):
+        return f"${self.precio:.2f}"
 
     def __str__(self):
         return self.nombre
@@ -63,6 +82,13 @@ class Pedido(models.Model):
         decimal_places=2,
         verbose_name='Total',
         help_text='Total del pedido'
+    )
+    isv = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0.15,
+        verbose_name='ISV',
+        help_text='Impuesto sobre ventas'
     )
     direccion = models.CharField(
         max_length=255,
@@ -105,6 +131,12 @@ class Pedido(models.Model):
         blank=True,
         null=True
     )
+
+    def formatted_subtotal(self):
+        return f"${self.subtotal:.2f}"
+
+    def formatted_total(self):
+        return f"${self.total:.2f}"
 
     def __str__(self):
         return f"Pedido de {self.nombre_cliente} - {self.producto.nombre}"

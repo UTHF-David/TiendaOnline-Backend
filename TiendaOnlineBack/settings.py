@@ -162,6 +162,12 @@ REST_FRAMEWORK = {
 
 }
 
+CSRF_TRUSTED_ORIGINS = [
+    'https://tlendsonline-backend-yago.onrender.com',  # Reemplaza con tu URL real
+]
+
+CSRF_COOKIE_SECURE = True    
+SESSION_COOKIE_SECURE = True 
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
