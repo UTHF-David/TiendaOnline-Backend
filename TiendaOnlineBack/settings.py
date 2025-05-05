@@ -123,7 +123,7 @@ USE_TZ = True
 
 # #quien puede acceder a la api
 CORS_ALLOWED_ORIGINS = [
-    "https://backend-ny2d.onrender.com",
+    "https://tiendaonline-backend-yaoo.onrender.com/",
     "https://comforting-rolypoly-9bb62e.netlify.app", 
     "http://localhost:5173",
     
@@ -131,7 +131,7 @@ CORS_ALLOWED_ORIGINS = [
 
 CORS_ALLOW_ALL_ORIGINS = True
 
-ALLOWED_HOSTS = ['backend-ny2d.onrender.com', 'localhost', '127.0.0.1']
+ALLOWED_HOSTS = ['https://tiendaonline-backend-yaoo.onrender.com/', 'localhost', '127.0.0.1']
 
 
 
