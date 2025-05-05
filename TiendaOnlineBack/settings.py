@@ -25,7 +25,11 @@ SECRET_KEY = 'django-insecure-(7*ji_&j0j!b2*+n86_@q^96g2^&wfex6psuoz25r6#&%^(p$-
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = [
+    'tiendaonline-backend-yaoo.onrender.com',
+    'localhost',
+    '127.0.0.1'
+]
 
 # Application definition
 
@@ -136,7 +140,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # #quien puede acceder a la api
 CORS_ALLOWED_ORIGINS = [
-    "https://tiendaonline-backend-yaoo.onrender.com/",    
+    "https://tiendaonline-backend-yaoo.onrender.com",    
     "http://localhost:5173",
     
 ]
