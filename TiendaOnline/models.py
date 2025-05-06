@@ -30,6 +30,8 @@ class Producto(models.Model):
         blank=True,
         null=True
     )
+   
+     
     tamaño = models.CharField(
         max_length=3,
         choices=[('S', 'S'), ('M', 'M'), ('L', 'L'), ('XL', 'XL'), ('XXL', 'XXL')],
