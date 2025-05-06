@@ -27,6 +27,7 @@ DEBUG = True
 
 ALLOWED_HOSTS = [
     'tiendaonline-backend-yaoo.onrender.com',
+    'sage-cannoli-55f8a1.netlify.app',
     'localhost',
     '127.0.0.1'
 ]
@@ -142,6 +143,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CORS_ALLOWED_ORIGINS = [
     "https://tiendaonline-backend-yaoo.onrender.com",    
     "http://localhost:5173",
+    'https://sage-cannoli-55f8a1.netlify.app/'
     
 ]
 
@@ -163,7 +165,8 @@ REST_FRAMEWORK = {
 }
 
 CSRF_TRUSTED_ORIGINS = [
-    'https://tlendsonline-backend-yago.onrender.com',  # Reemplaza con tu URL real
+    'https://tlendsonline-backend-yago.onrender.com',
+    'https://sage-cannoli-55f8a1.netlify.app/'  # Reemplaza con tu URL real
 ]
 
 CSRF_COOKIE_SECURE = True    
