@@ -1,0 +1,41 @@
+[
+{
+  "model": "TiendaOnline.producto",
+  "pk": 1,
+  "fields": {
+    "nombre": "Yeti 5oz",
+    "precio": "10.50",
+    "cantidad_en_stock": 5,
+    "descripcion": "son aptos para lavavajillas y tienen un diseño que evita la sudoración para que tus manos se mantengan secas.",
+    "imagen": "productos/Captura_de_pantalla_2025-05-05_103518.png",
+    "tamaño": "S",
+    "colores": "blanco"
+  }
+},
+{
+  "model": "TiendaOnline.producto",
+  "pk": 6,
+  "fields": {
+    "nombre": "vgd",
+    "precio": "52.00",
+    "cantidad_en_stock": 12,
+    "descripcion": "nb",
+    "imagen": "pruebas/image-1_LZmBs95.png",
+    "tamaño": "XXL",
+    "colores": "rojo"
+  }
+},
+{
+  "model": "TiendaOnline.producto",
+  "pk": 7,
+  "fields": {
+    "nombre": "mkl",
+    "precio": "20.00",
+    "cantidad_en_stock": 5,
+    "descripcion": "jh",
+    "imagen": "productos/image-1.png",
+    "tamaño": "XL",
+    "colores": "blanco"
+  }
+}
+]

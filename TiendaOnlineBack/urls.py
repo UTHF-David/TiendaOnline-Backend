@@ -19,11 +19,13 @@ from django.urls import path,include
 from django.conf import settings # Importa la configuración de Django
 from django.conf.urls.static import static # Importa la función para servir archivos estáticos
 from rest_framework.documentation import include_docs_urls # Importa la función para incluir la documentación de la API
+from django.views.static import serve # Importa la vista para servir archivos estáticos
 
 
 urlpatterns = [
     path('admin/', admin.site.urls),        
     path('api/v1/', include('TiendaOnline.urls')), # Incluye las URLs de la aplicación 'tienda'
+    path('media/<path:path>', serve, {'document_root': settings.MEDIA_ROOT}),
     path('docs/', include_docs_urls(title='API Documentation')), # Incluye la documentación de la API
     
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) # Para servir archivos estáticos en desarrollo
