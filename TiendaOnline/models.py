@@ -1,4 +1,5 @@
 from django.db import models
+from colorfield.fields import ColorField
 
 class Producto(models.Model):
     id = models.AutoField(primary_key=True)  # Campo ID explícito
@@ -30,7 +31,15 @@ class Producto(models.Model):
         blank=True,
         null=True
     )
-   
+    
+    categoria = models.CharField(
+        max_length=3,
+        choices=[('M', 'Mujeres'), ('H', 'Hombres')],
+        verbose_name='Categoria',
+        help_text='Tamaño del producto',
+        blank=True,
+        null=True
+    )
      
     tamaño = models.CharField(
         max_length=3,
@@ -40,11 +49,10 @@ class Producto(models.Model):
         blank=True,
         null=True
     )
-    colores = models.CharField(
-        max_length=50,
-        choices=[('blanco', 'Blanco'), ('rojo', 'Rojo'), ('azul', 'Azul')],
-        verbose_name='Colores',
-        help_text='Colores disponibles del producto',
+    colores = ColorField(
+        verbose_name='Color',
+        help_text='Selecciona un color para el producto',
+        default='#FFFFFF',  # Color blanco por defecto
         blank=True,
         null=True
     )
