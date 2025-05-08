@@ -53,13 +53,7 @@ class Producto(models.Model):
     colores = models.CharField(
         max_length=7,
         verbose_name='Color Hexadecimal',
-        help_text='Color en formato hexadecimal (ej. #FF0000)',
-        validators=[
-            RegexValidator(
-                regex='^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$',
-                message='El color debe estar en formato hexadecimal (ej. #FF0000)'
-            )
-        ]
+        help_text='Color en formato hexadecimal (ej. #FF0000)'        
     )
 
     def formatted_price(self):
