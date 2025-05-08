@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
-# 1. Crea la estructura de directorios necesaria
+# Crea directorios necesarios
 mkdir -p media/productos
 
-# 2. Aplica migraciones
+# Si tienes imágenes por defecto, cópialas desde un directorio de respaldo
+if [ -d "backup_media" ]; then
+    cp -r backup_media/* media/
+fi
+
+# Migraciones y inicio del servidor
 python manage.py migrate
-
-# 3. Opcional: Carga datos iniciales (si necesitas imágenes por defecto)
-# python manage.py loaddata initial_images.json
-
-# 4. Inicia el servidor
 python manage.py runserver 0.0.0.0:$PORT

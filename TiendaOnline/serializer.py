@@ -8,12 +8,10 @@ class ProductoSerializer(serializers.ModelSerializer):
         fields = '__all__'  # Todos los campos del modelo Producto
 
                
-    def to_representation(self, instance):
-        data = super().to_representation(instance)
-        # Asegura que la URL de la imagen sea absoluta
-        if instance.imagen:
-            data['imagen'] = self.context['request'].build_absolute_uri(instance.imagen.url)
-        return data
+    def get_imagen(self, obj):
+        if obj.imagen:
+            return self.context['request'].build_absolute_uri(obj.imagen.url)
+        return None
 
 # Serializador para Pedido (con Producto anidado si lo necesitas)
 class PedidoSerializer(serializers.ModelSerializer):
