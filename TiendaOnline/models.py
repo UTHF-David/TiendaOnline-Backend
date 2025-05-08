@@ -1,5 +1,6 @@
 from django.db import models
 from colorfield.fields import ColorField
+from django.core.validators import RegexValidator
 
 class Producto(models.Model):
     id = models.AutoField(primary_key=True)  # Campo ID explícito
@@ -49,11 +50,16 @@ class Producto(models.Model):
         blank=True,
         null=True
     )
-    colores = models.TextField(
-        verbose_name='Color',        
-        help_text='Selecciona un color para el producto',          
-        blank=True,
-        null=True
+    colores = models.CharField(
+        max_length=7,
+        verbose_name='Color Hexadecimal',
+        help_text='Color en formato hexadecimal (ej. #FF0000)',
+        validators=[
+            RegexValidator(
+                regex='^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$',
+                message='El color debe estar en formato hexadecimal (ej. #FF0000)'
+            )
+        ]
     )
 
     def formatted_price(self):
