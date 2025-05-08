@@ -50,10 +50,11 @@ class Producto(models.Model):
         blank=True,
         null=True
     )
-    colores = models.CharField(
-        max_length=7,
+    colores = models.TextField(        
         verbose_name='Color Hexadecimal',
-        help_text='Color en formato hexadecimal (ej. #FF0000)'        
+        help_text='Color en formato hexadecimal (ej. #FF0000)',
+        default='#FFFFFF',        
+        null=False,
     )
 
     def formatted_price(self):
