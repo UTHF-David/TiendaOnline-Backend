@@ -1,6 +1,4 @@
 from django.db import models
-from colorfield.fields import ColorField
-from django.core.validators import RegexValidator
 
 class Producto(models.Model):
     id = models.AutoField(primary_key=True)  # Campo ID explícito
