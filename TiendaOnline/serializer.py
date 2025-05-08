@@ -26,5 +26,5 @@ class PedidoSerializer(serializers.ModelSerializer):
     #     model = Pedido
     #     fields = '__all__'
 
-    from rest_framework import serializers
+    
 

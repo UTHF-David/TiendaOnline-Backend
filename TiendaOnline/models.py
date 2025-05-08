@@ -49,10 +49,9 @@ class Producto(models.Model):
         blank=True,
         null=True
     )
-    colores = ColorField(
-        verbose_name='Color',
-        help_text='Selecciona un color para el producto',
-        default='#FFFFFF',  # Color blanco por defecto
+    colores = models.TextField(
+        verbose_name='Color',        
+        help_text='Selecciona un color para el producto',          
         blank=True,
         null=True
     )
