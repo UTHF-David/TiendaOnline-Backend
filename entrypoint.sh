@@ -12,7 +12,7 @@ mkdir -p static
 python manage.py collectstatic --noinput
 
 # 4. Opción A: Usar Waitress (recomendado para producción)
-waitress-serve --port=$PORT tu_proyecto.wsgi:application
+waitress-serve --port=$PORT TiendaOnlineBack.wsgi:application
 
 # O bien Opción B: Usar runserver (solo para desarrollo/testing)
 # python manage.py runserver 0.0.0.0:$PORT --nothreading --noreload
