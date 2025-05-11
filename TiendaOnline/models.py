@@ -1,7 +1,7 @@
 from django.db import models
 
 class Producto(models.Model):
-    id = models.AutoField(primary_key=True)  # Campo ID explícito
+    id = models.AutoField(primary_key=True)
     nombre = models.CharField(
         max_length=255,
         verbose_name='Nombre del Producto',
@@ -23,10 +23,10 @@ class Producto(models.Model):
         blank=True,
         null=True
     )
-    imagen = models.ImageField(
-        upload_to='productos/',
-        verbose_name='Imagen del Producto',
-        help_text='Imagen del producto',
+    
+    imagen = models.TextField(
+        verbose_name='Imagen del Producto en Base64',
+        help_text='Imagen del producto codificada en base64',
         blank=True,
         null=True
     )
@@ -63,7 +63,7 @@ class Producto(models.Model):
 
 
 class Pedido(models.Model):
-    id = models.AutoField(primary_key=True)  # Campo ID explícito
+    id = models.AutoField(primary_key=True)
     nombre_cliente = models.CharField(
         max_length=255,
         verbose_name='Nombre del Cliente',

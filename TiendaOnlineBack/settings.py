@@ -29,7 +29,8 @@ ALLOWED_HOSTS = [
     'tiendaonline-backend-yaoo.onrender.com',
     'sage-cannoli-55f8a1.netlify.app',
     'localhost',
-    '127.0.0.1'
+    '127.0.0.1',
+    "https://res.cloudinary.com",
 ]
 
 # Application definition
@@ -45,6 +46,9 @@ INSTALLED_APPS = [
     'corsheaders',
     'TiendaOnline',
     'coreapi',
+    'cloudinary',
+    'cloudinary_storage',
+    
 
     
 ]
@@ -144,7 +148,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CORS_ALLOWED_ORIGINS = [
     "https://tiendaonline-backend-yaoo.onrender.com",    
     "http://localhost:5173",
-    'https://sage-cannoli-55f8a1.netlify.app'
+    'https://sage-cannoli-55f8a1.netlify.app',
+    "https://res.cloudinary.com",
     
 ]
 
@@ -178,10 +183,17 @@ SESSION_COOKIE_SECURE = True
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
+#cloudinary 
+import cloudinary
+import cloudinary.uploader
+import cloudinary.api
+
 CLOUDINARY_STORAGE = {
 
     'CLOUD_NAME': 'ddf5vvx0b',
     'API_KEY': '652987374643726',
     'API_SECRET': 'Hm8pxE26MFN1uxyEgH2Afjrao2o',
 }
+
+DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 

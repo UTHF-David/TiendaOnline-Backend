@@ -1,14 +1,34 @@
-from django.shortcuts import render
-from rest_framework import viewsets
+from rest_framework import viewsets, status
+from rest_framework.response import Response
 from .models import Producto, Pedido
-from .serializer import ProductoSerializer, PedidoSerializer  # Importa ambos serializadores
+from .serializer import ProductoSerializer, PedidoSerializer
 
-# ViewSet para Producto
 class ProductoViewSet(viewsets.ModelViewSet):
-    queryset = Producto.objects.all()  # Consulta TODOS los productos
-    serializer_class = ProductoSerializer  # Usa el serializador de Producto
+    queryset = Producto.objects.all()
+    serializer_class = ProductoSerializer
 
-# ViewSet para Pedido
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        try:
+            serializer.is_valid(raise_exception=True)
+            self.perform_create(serializer)
+            headers = self.get_success_headers(serializer.data)
+            return Response(
+                serializer.data, 
+                status=status.HTTP_201_CREATED, 
+                headers=headers
+            )
+        except Exception as e:
+            error_data = {
+                'error': str(e),
+                'received_data': request.data,
+                'validation_errors': serializer.errors
+            }
+            return Response(
+                error_data,
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
 class PedidoViewSet(viewsets.ModelViewSet):
-    queryset = Pedido.objects.all()  # Consulta TODOS los pedidos
-    serializer_class = PedidoSerializer  # Usa el serializador de Pedido
+    queryset = Pedido.objects.all()
+    serializer_class = PedidoSerializer
