@@ -1,39 +1,5 @@
 from rest_framework import serializers
 from .models import Producto, Pedido
-import base64
-import imghdr
-from django.core.files.base import ContentFile
-from django.utils.text import slugify
-import uuid
-
-class Base64ImageField(serializers.Field):
-    def to_internal_value(self, data):
-        try:
-            # Si ya es solo base64 (sin prefijo data:image)
-            if isinstance(data, str) and not data.startswith('data:image'):
-                return data
-            
-            # Si viene con prefijo data:image
-            if isinstance(data, str) and data.startswith('data:image'):
-                format, imgstr = data.split(';base64,')
-                ext = format.split('/')[-1]
-                
-                # Validar que sea una imagen válida
-                decoded_file = base64.b64decode(imgstr)
-                image_type = imghdr.what(None, decoded_file)
-                if not image_type:
-                    raise serializers.ValidationError("El archivo no es una imagen válida")
-                
-                return imgstr
-            
-            return None
-        except Exception as e:
-            raise serializers.ValidationError(f"Error al procesar la imagen: {str(e)}")
-
-    def to_representation(self, value):
-        if value:
-            return f"data:image/jpeg;base64,{value}"
-        return None
 
 class ProductoSerializer(serializers.ModelSerializer):
     class Meta:
@@ -43,15 +9,27 @@ class ProductoSerializer(serializers.ModelSerializer):
             'imagen_base64': {'required': False}
         }
 
-    def validate_precio(self, value):
-        if value <= 0:
-            raise serializers.ValidationError("El precio debe ser mayor a cero")
-        return value
+    def create(self, validated_data):
+        # Guardar directamente la cadena Base64 en la base de datos
+        return super().create(validated_data)
 
-    def validate_cantidad_en_stock(self, value):
-        if value < 0:
-            raise serializers.ValidationError("La cantidad no puede ser negativa")
-        return value
+    def update(self, instance, validated_data):
+        # Actualizar directamente la cadena Base64 en la base de datos
+        return super().update(instance, validated_data)
+
+    def validate_imagen_base64(self, value):
+        # Validar que el valor sea una imagen válida en formato Base64
+        try:
+            if value:
+                import base64
+                import imghdr
+                decoded_file = base64.b64decode(value)
+                image_type = imghdr.what(None, decoded_file)
+                if not image_type:
+                    raise serializers.ValidationError("El archivo no es una imagen válida")
+            return value
+        except Exception as e:
+            raise serializers.ValidationError(f"Error al procesar la imagen: {str(e)}")
 
 class PedidoSerializer(serializers.ModelSerializer):
     class Meta:
