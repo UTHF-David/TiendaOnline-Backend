@@ -2,6 +2,7 @@ from django.db import models
 
 class Producto(models.Model):
     id = models.AutoField(primary_key=True)
+
     nombre = models.CharField(
         max_length=255,
         verbose_name='Nombre del Producto',
@@ -24,9 +25,16 @@ class Producto(models.Model):
         null=True
     )
     
-    imagen = models.TextField(
-        verbose_name='Imagen del Producto en Base64',
-        help_text='Imagen del producto codificada en base64',
+    #imagen = models.TextField(
+    #    verbose_name='Imagen del Producto en Base64',
+    #    help_text='Imagen del producto codificada en base64',
+    #    blank=True,
+    #    null=True
+    #)
+
+    imagen_base64 = models.TextField(
+        verbose_name='Imagen en Base64',
+        help_text='Imagen del producto codificada en Base64',
         blank=True,
         null=True
     )

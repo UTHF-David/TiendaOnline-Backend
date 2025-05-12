@@ -36,29 +36,22 @@ class Base64ImageField(serializers.Field):
         return None
 
 class ProductoSerializer(serializers.ModelSerializer):
-    imagen = Base64ImageField(required=False, allow_null=True)
-
     class Meta:
         model = Producto
         fields = '__all__'
         extra_kwargs = {
-            'imagen': {'required': False, 'allow_null': True}
+            'imagen_base64': {'required': False}
         }
 
-    def validate(self, data):
-        # Validación adicional para el color hexadecimal
-        if 'colores' in data and not data['colores'].startswith('#'):
-            raise serializers.ValidationError({
-                'colores': 'El color debe estar en formato hexadecimal (ej. #FF0000)'
-            })
-        
-        # Validación para el precio
-        if 'precio' in data and data['precio'] <= 0:
-            raise serializers.ValidationError({
-                'precio': 'El precio debe ser mayor que 0'
-            })
-        
-        return data
+    def validate_precio(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("El precio debe ser mayor a cero")
+        return value
+
+    def validate_cantidad_en_stock(self, value):
+        if value < 0:
+            raise serializers.ValidationError("La cantidad no puede ser negativa")
+        return value
 
 class PedidoSerializer(serializers.ModelSerializer):
     class Meta:
