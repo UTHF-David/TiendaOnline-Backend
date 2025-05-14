@@ -22,11 +22,14 @@ from rest_framework.documentation import include_docs_urls # Importa la función
 from django.views.static import serve # Importa la vista para servir archivos estáticos
 
 
+
 urlpatterns = [
     path('admin/', admin.site.urls),        
     path('api/v1/', include('TiendaOnline.urls')), # Incluye las URLs de la aplicación 'tienda'
     path('media/<path:path>', serve, {'document_root': settings.MEDIA_ROOT}),
     path('docs/', include_docs_urls(title='API Documentation')), # Incluye la documentación de la API
+    
+    
     
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) # Para servir archivos estáticos en desarrollo
 
