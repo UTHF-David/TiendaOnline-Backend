@@ -48,7 +48,6 @@ INSTALLED_APPS = [
     'coreapi',
     'cloudinary',
     'cloudinary_storage',
-    'django_extensions',
     
 
     
