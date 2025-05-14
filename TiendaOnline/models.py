@@ -126,10 +126,15 @@ class Pedido(models.Model):
         blank=True,
         null=True
     )
-    estado = models.CharField(
+    estado = models.TextField(
         max_length=50,
+        choices=[
+        ('Pagado', 'Pagado'),
+        ('En Camino', 'En Camino'),
+        ('Recibido', 'Recibido')],
         verbose_name='Estado del Pedido',
-        help_text='Estado actual del pedido'
+        help_text='Estado actual del pedido',
+        default='Pagado',
     )
     descripcion_adicional = models.TextField(
         verbose_name='Descripción Adicional',
