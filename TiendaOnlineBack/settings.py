@@ -45,9 +45,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'corsheaders',
     'TiendaOnline',
-    'coreapi',
-    'cloudinary',
-    'cloudinary_storage',
+    'coreapi',    
     
 
     
@@ -153,7 +151,7 @@ CORS_ALLOWED_ORIGINS = [
     
 ]
 
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_ALL_ORIGINS = False
 
 #Metodos permitidos para la api
 CORS_ALLOW_METHODS = [
@@ -191,20 +189,7 @@ CSRF_TRUSTED_ORIGINS = [
 CSRF_COOKIE_SECURE = True    
 SESSION_COOKIE_SECURE = True 
 
-MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
 
-#cloudinary 
-import cloudinary
-import cloudinary.uploader
-import cloudinary.api
 
-CLOUDINARY_STORAGE = {
 
-    'CLOUD_NAME': 'ddf5vvx0b',
-    'API_KEY': '652987374643726',
-    'API_SECRET': 'Hm8pxE26MFN1uxyEgH2Afjrao2o',
-}
-
-DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 

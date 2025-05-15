@@ -72,11 +72,20 @@ class Producto(models.Model):
 
 class Pedido(models.Model):
     id = models.AutoField(primary_key=True)
+    
     nombre_cliente = models.CharField(
         max_length=255,
         verbose_name='Nombre del Cliente',
         help_text='El nombre del cliente que realizó el pedido'
     )
+
+    apellido_cliente = models.CharField(
+        max_length=255,
+        verbose_name='Apellido del Cliente',
+        help_text='El apellido del cliente que realizó el pedido',
+        null=True
+    )
+
     producto = models.ForeignKey(
         Producto,
         on_delete=models.CASCADE,
@@ -106,6 +115,15 @@ class Pedido(models.Model):
         verbose_name='ISV',
         help_text='Impuesto sobre ventas'
     )
+
+    company = models.CharField(
+        max_length=255,
+        verbose_name='Compañia',
+        help_text='Compañia a entregar',
+        blank=True,
+        null=True
+    )
+
     direccion = models.CharField(
         max_length=255,
         verbose_name='Dirección',
@@ -113,6 +131,40 @@ class Pedido(models.Model):
         blank=True,
         null=True
     )
+
+
+    pais = models.CharField(
+        max_length=255,
+        verbose_name='Pais',
+        help_text='Pais de entrega',
+        blank=True,
+        null=True
+    )
+
+    estado_pais = models.CharField(
+        max_length=255,
+        verbose_name='Estado',
+        help_text='Estado del pais de entrega',
+        blank=True,
+        null=True
+    )
+
+    ciudad = models.CharField(
+        max_length=255,
+        verbose_name='Ciudad',
+        help_text='Ciudad de entrega',
+        blank=True,
+        null=True
+    )
+
+    zip = models.CharField(
+        max_length=255,
+        verbose_name='codigo postal',
+        help_text='Codigo Postal de entrega',
+        blank=True,
+        null=True
+    )
+
     correo = models.EmailField(
         verbose_name='Correo Electrónico',
         help_text='Correo electrónico del cliente',
