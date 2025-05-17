@@ -76,7 +76,7 @@ class Pedido(models.Model):
     nombre_cliente = models.CharField(
         max_length=255,
         verbose_name='Nombre del Cliente',
-        help_text='El nombre del cliente que realizó el pedido'
+        help_text='El nombre del cliente que realizó el pedid'
     )
 
     apellido_cliente = models.CharField(
@@ -116,7 +116,7 @@ class Pedido(models.Model):
         help_text='Impuesto sobre ventas'
     )
 
-    company = models.CharField(
+    compañia = models.CharField(
         max_length=255,
         verbose_name='Compañia',
         help_text='Compañia a entregar',
@@ -144,7 +144,7 @@ class Pedido(models.Model):
     estado_pais = models.CharField(
         max_length=255,
         verbose_name='Estado',
-        help_text='Estado del pais de entrega',
+        help_text='Estado del pais de entregas',
         blank=True,
         null=True
     )

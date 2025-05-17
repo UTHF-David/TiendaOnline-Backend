@@ -3,6 +3,8 @@ from django.contrib import admin
 from .views import ProductoViewSet, PedidoViewSet # Importa los viewsets de Producto y Pedido
 from rest_framework.routers import DefaultRouter #importacion del router
 from .views import ProductoViewSet, PedidoViewSet  # Importa la vista personalizada
+from rest_framework_simplejwt.views import TokenObtainPairView,TokenRefreshView
+
 
 # Importa el viewset de Producto y Pedido
 router = DefaultRouter() #creacion del router
@@ -18,9 +20,7 @@ router.register(r'pedidos', PedidoViewSet)     # /api/pedidos/
 urlpatterns = [
     path('', include(router.urls)), #ruta de la api url base
     path('admin/', admin.site.urls), #ruta del admin    
-
-    
-    
-    
-    
+    #path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),  
+    #path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+        
 ]

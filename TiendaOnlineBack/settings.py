@@ -42,7 +42,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'rest_framework',
+    'rest_framework',    
     'corsheaders',
     'TiendaOnline',
     'coreapi',    
@@ -165,10 +165,8 @@ CORS_ALLOW_METHODS = [
 
 
 REST_FRAMEWORK = {
-
- 'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.coreapi.AutoSchema',
-
-'DEFAULT_PARSER_CLASSES': [
+    'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.coreapi.AutoSchema',
+    'DEFAULT_PARSER_CLASSES': [
         'rest_framework.parsers.JSONParser',
         'rest_framework.parsers.MultiPartParser',
         'rest_framework.parsers.FormParser',
@@ -177,17 +175,19 @@ REST_FRAMEWORK = {
         'rest_framework.renderers.JSONRenderer',
         'rest_framework.renderers.BrowsableAPIRenderer',
     ],
+    
 }
 
 
 
 CSRF_TRUSTED_ORIGINS = [
     'https://tlendsonline-backend-yago.onrender.com',
-    'https://sage-cannoli-55f8a1.netlify.app/'  # Reemplaza con tu URL real
+    'https://sage-cannoli-55f8a1.netlify.app/',  # Reemplaza con tu URL real
+    'https://www.sandbox.paypal.com'
 ]
 
 CSRF_COOKIE_SECURE = True    
-SESSION_COOKIE_SECURE = True 
+SESSION_COOKIE_SECURE = True
 
 
 

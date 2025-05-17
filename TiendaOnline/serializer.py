@@ -1,5 +1,7 @@
 from rest_framework import serializers
 from .models import Producto, Pedido
+from django.contrib.auth.models import User
+
 
 class ProductoSerializer(serializers.ModelSerializer):
     class Meta:
@@ -35,3 +37,9 @@ class PedidoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Pedido
         fields = '__all__'
+
+
+class UsersSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['username', 'first_name', 'middle_name', 'last_name', 'email']
