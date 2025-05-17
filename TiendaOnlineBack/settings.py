@@ -30,7 +30,6 @@ ALLOWED_HOSTS = [
     'sage-cannoli-55f8a1.netlify.app',
     'localhost',
     '127.0.0.1',
-    "https://res.cloudinary.com",
 ]
 
 # Application definition
@@ -54,7 +53,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',  
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -144,14 +143,12 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # #quien puede acceder a la api
 CORS_ALLOWED_ORIGINS = [
-    "https://tiendaonline-backend-yaoo.onrender.com",    
     "http://localhost:5173",
-    'https://sage-cannoli-55f8a1.netlify.app',
-    "https://res.cloudinary.com",
-    
+    "https://sage-cannoli-55f8a1.netlify.app",
+    "https://tiendaonline-backend-yaoo.onrender.com",
 ]
 
-CORS_ALLOW_ALL_ORIGINS = False
+CORS_ALLOW_ALL_ORIGINS = True
 
 #Metodos permitidos para la api
 CORS_ALLOW_METHODS = [
@@ -188,8 +185,3 @@ CSRF_TRUSTED_ORIGINS = [
 
 CSRF_COOKIE_SECURE = True    
 SESSION_COOKIE_SECURE = True
-
-
-
-
-
