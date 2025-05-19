@@ -66,7 +66,7 @@ class Pedido(models.Model):
         ('Recibido', 'Recibido')
     ]
 
-    id_pedido = models.AutoField(primary_key=True)
+    id_pedido = models.CharField(primary_key=True, max_length=255)
     producto = models.ForeignKey(
         Producto,
         on_delete=models.CASCADE,
