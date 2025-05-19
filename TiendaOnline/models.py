@@ -2,7 +2,6 @@ from django.db import models
 
 class Producto(models.Model):
     id = models.AutoField(primary_key=True)
-
     nombre = models.CharField(
         max_length=255,
         verbose_name='Nombre del Producto',
@@ -24,21 +23,12 @@ class Producto(models.Model):
         blank=True,
         null=True
     )
-    
-    #imagen = models.TextField(
-    #    verbose_name='Imagen del Producto en Base64',
-    #    help_text='Imagen del producto codificada en base64',
-    #    blank=True,
-    #    null=True
-    #)
-
     imagen_base64 = models.TextField(
         verbose_name='Imagen en Base64',
         help_text='Imagen del producto codificada en Base64',
         blank=True,
         null=True
     )
-    
     categoria = models.CharField(
         max_length=3,
         choices=[('M', 'Mujeres'), ('H', 'Hombres')],
@@ -47,7 +37,6 @@ class Producto(models.Model):
         blank=True,
         null=True
     )
-     
     tamaño = models.CharField(
         max_length=3,
         choices=[('S', 'S'), ('M', 'M'), ('L', 'L'), ('XL', 'XL'), ('XXL', 'XXL')],
@@ -71,31 +60,37 @@ class Producto(models.Model):
 
 
 class Pedido(models.Model):
-    id = models.AutoField(primary_key=True)
-    
-    nombre_cliente = models.CharField(
-        max_length=255,
-        verbose_name='Nombre del Cliente',
-        help_text='El nombre del cliente que realizó el pedid'
-    )
+    ESTADO_CHOICES = [
+        ('Pagado', 'Pagado'),
+        ('En Camino', 'En Camino'),
+        ('Recibido', 'Recibido')
+    ]
 
-    apellido_cliente = models.CharField(
-        max_length=255,
-        verbose_name='Apellido del Cliente',
-        help_text='El apellido del cliente que realizó el pedido',
-        null=True
-    )
-
+    id_pedido = models.AutoField(primary_key=True)
     producto = models.ForeignKey(
         Producto,
         on_delete=models.CASCADE,
         verbose_name='Producto',
-        help_text='El producto asociado al pedido'
+        help_text='Producto asociado al pedido'
+    )
+    nombre_cliente = models.CharField(
+        max_length=255,
+        verbose_name='Nombre del Cliente',
+        help_text='El nombre del cliente que realizó el pedido'
+    )
+    apellido_cliente = models.CharField(
+        max_length=255,
+        verbose_name='Apellido del Cliente',
+        help_text='El apellido del cliente que realizó el pedido',
+        null=True,
+        blank=True
     )
     cantidad = models.IntegerField(
-        verbose_name='Cantidad',
-        help_text='Cantidad de productos en el pedido'
+        verbose_name='Cantidad de productos',
+        help_text='Cantidad de productos que se compraron',
+        default=0
     )
+
     subtotal = models.DecimalField(
         max_digits=10,
         decimal_places=2,
@@ -115,7 +110,6 @@ class Pedido(models.Model):
         verbose_name='ISV',
         help_text='Impuesto sobre ventas'
     )
-
     compañia = models.CharField(
         max_length=255,
         verbose_name='Compañia',
@@ -123,7 +117,6 @@ class Pedido(models.Model):
         blank=True,
         null=True
     )
-
     direccion = models.CharField(
         max_length=255,
         verbose_name='Dirección',
@@ -131,8 +124,6 @@ class Pedido(models.Model):
         blank=True,
         null=True
     )
-
-
     pais = models.CharField(
         max_length=255,
         verbose_name='Pais',
@@ -140,7 +131,6 @@ class Pedido(models.Model):
         blank=True,
         null=True
     )
-
     estado_pais = models.CharField(
         max_length=255,
         verbose_name='Estado',
@@ -148,7 +138,6 @@ class Pedido(models.Model):
         blank=True,
         null=True
     )
-
     ciudad = models.CharField(
         max_length=255,
         verbose_name='Ciudad',
@@ -156,7 +145,6 @@ class Pedido(models.Model):
         blank=True,
         null=True
     )
-
     zip = models.CharField(
         max_length=255,
         verbose_name='codigo postal',
@@ -164,7 +152,6 @@ class Pedido(models.Model):
         blank=True,
         null=True
     )
-
     correo = models.EmailField(
         verbose_name='Correo Electrónico',
         help_text='Correo electrónico del cliente',
@@ -178,12 +165,9 @@ class Pedido(models.Model):
         blank=True,
         null=True
     )
-    estado = models.TextField(
+    estado = models.CharField(
         max_length=50,
-        choices=[
-        ('Pagado', 'Pagado'),
-        ('En Camino', 'En Camino'),
-        ('Recibido', 'Recibido')],
+        choices=ESTADO_CHOICES,
         verbose_name='Estado del Pedido',
         help_text='Estado actual del pedido',
         default='Pagado',
@@ -211,5 +195,9 @@ class Pedido(models.Model):
     def formatted_total(self):
         return f"${self.total:.2f}"
 
+    def get_nombre_producto(self):
+        return self.producto.nombre if self.producto else "Producto no especificado"
+
     def __str__(self):
-        return f"Pedido de {self.nombre_cliente} - {self.producto.nombre}"
+        return f"Pedido #{self.id_pedido} - {self.nombre_cliente} - {self.get_nombre_producto()}"
+    

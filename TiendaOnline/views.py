@@ -123,3 +123,63 @@ class ProductoViewSet(viewsets.ModelViewSet):
 class PedidoViewSet(viewsets.ModelViewSet):
     queryset = Pedido.objects.all()
     serializer_class = PedidoSerializer
+
+    def createPedido(self, request, *args, **kwargs):
+        try:
+            # Obtener los datos del request
+            data = request.data
+            
+            # Obtener el producto
+            producto = get_object_or_404(Producto, id=data.get('producto'))
+            
+            # Validar stock disponible
+            if producto.cantidad_en_stock < data.get('cantidad', 0):
+                return Response({
+                    'error': 'No hay suficiente stock disponible'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Calcular subtotal y total
+            subtotal = float(producto.precio) * float(data.get('cantidad', 0))
+            isv = float(data.get('isv', 0.15))
+            total = subtotal * (1 + isv)
+            
+            # Crear el pedido
+            pedido = Pedido.objects.create(
+                producto=producto,
+                nombre_cliente=data.get('nombre_cliente'),
+                apellido_cliente=data.get('apellido_cliente'),
+                cantidad=data.get('cantidad'),
+                subtotal=subtotal,
+                total=total,
+                isv=isv,
+                compañia=data.get('compañia'),
+                direccion=data.get('direccion'),
+                pais=data.get('pais'),
+                estado_pais=data.get('estado_pais'),
+                ciudad=data.get('ciudad'),
+                zip=data.get('zip'),
+                correo=data.get('correo'),
+                telefono=data.get('telefono'),
+                estado='Pagado',
+                descripcion_adicional=data.get('descripcion_adicional'),
+                fecha_compra=data.get('fecha_compra'),
+                fecha_entrega=data.get('fecha_entrega')
+            )
+            
+            # Actualizar stock del producto
+            producto.cantidad_en_stock -= data.get('cantidad', 0)
+            producto.save()
+            
+            # Serializar y retornar respuesta
+            serializer = self.get_serializer(pedido)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            
+        except Exception as e:
+            return Response({
+                'error': str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+            
+
+
+    
+
