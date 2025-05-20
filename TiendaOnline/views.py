@@ -27,7 +27,7 @@ class ProductoViewSet(viewsets.ModelViewSet):
             
             # Crear copia mutable de los datos
             data = request.data.copy()
-            data['imagen_base64'] = imagen_base64
+            data['image'] = imagen_base64
             
             serializer = self.get_serializer(data=data)
             serializer.is_valid(raise_exception=True)
@@ -50,7 +50,7 @@ class ProductoViewSet(viewsets.ModelViewSet):
         imagen_file = request.FILES.get('imagen')
         if imagen_file:
             imagen_data = imagen_file.read()
-            request.data['imagen_base64'] = base64.b64encode(imagen_data).decode('utf-8')
+            request.data['image'] = base64.b64encode(imagen_data).decode('utf-8')
         
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
