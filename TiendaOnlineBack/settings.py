@@ -87,11 +87,11 @@ WSGI_APPLICATION = 'TiendaOnlineBack.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'uth',
+        'NAME': 'uth_florida_university',
         'USER': 'root',
-        'PASSWORD': 'BuFqaxWuhiZAtrWKdDczGmyDeSIQYgaI',
-        'HOST': 'interchange.proxy.rlwy.net',
-        'PORT': '35864',
+        'PASSWORD': 'tLAGxoaHPkaBwSimCwRYwPEHXycDZMnG',
+        'HOST': 'trolley.proxy.rlwy.net',
+        'PORT': '29999',
         'OPTIONS': {
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
             'charset': 'utf8mb4',
@@ -117,7 +117,7 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
 ]
-
+AUTH_USER_MODEL = 'TiendaOnline.Usuario'
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/

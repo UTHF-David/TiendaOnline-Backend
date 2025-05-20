@@ -1,11 +1,11 @@
 from rest_framework.parsers import MultiPartParser, FormParser
-from .serializer import ProductoSerializer, PedidoSerializer
+from .serializer import ProductoSerializer, PedidoSerializer, PedidoDetalleSerializer
 from django.shortcuts import get_object_or_404
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import viewsets, status
 
-from .models import Producto, Pedido
+from .models import Producto, Pedido, PedidoDetalle
 
 import base64
 
@@ -124,52 +124,50 @@ class PedidoViewSet(viewsets.ModelViewSet):
     queryset = Pedido.objects.all()
     serializer_class = PedidoSerializer
 
-    def createPedido(self, request, *args, **kwargs):
+    def create(self, request, *args, **kwargs):
         try:
             # Obtener los datos del request
             data = request.data
+            productos_data = data.pop('productos', [])  # Lista de productos a comprar
             
-            # Obtener el producto
-            producto = get_object_or_404(Producto, id=data.get('producto'))
-            
-            # Validar stock disponible
-            if producto.cantidad_en_stock < data.get('cantidad', 0):
-                return Response({
-                    'error': 'No hay suficiente stock disponible'
-                }, status=status.HTTP_400_BAD_REQUEST)
-            
-            # Calcular subtotal y total
-            subtotal = float(producto.precio) * float(data.get('cantidad', 0))
-            isv = float(data.get('isv', 0.15))
-            total = subtotal * (1 + isv)
-            
-            # Crear el pedido
+            # Crear el pedido base
             pedido = Pedido.objects.create(
-                producto=producto,
-                nombre_cliente=data.get('nombre_cliente'),
-                apellido_cliente=data.get('apellido_cliente'),
-                cantidad=data.get('cantidad'),
-                subtotal=subtotal,
-                total=total,
-                isv=isv,
-                compañia=data.get('compañia'),
+                usuario_id=data.get('usuario'),
+                company=data.get('company'),
                 direccion=data.get('direccion'),
-                pais=data.get('pais'),
+                pais_id=data.get('pais'),
                 estado_pais=data.get('estado_pais'),
                 ciudad=data.get('ciudad'),
                 zip=data.get('zip'),
                 correo=data.get('correo'),
                 telefono=data.get('telefono'),
-                estado='Pagado',
-                descripcion_adicional=data.get('descripcion_adicional'),
-                fecha_compra=data.get('fecha_compra'),
-                fecha_entrega=data.get('fecha_entrega')
+                estado_compra='Pagado',
+                desc_adicional=data.get('desc_adicional')
             )
-            
-            # Actualizar stock del producto
-            producto.cantidad_en_stock -= data.get('cantidad', 0)
-            producto.save()
-            
+
+            # Procesar cada producto en el pedido
+            for producto_data in productos_data:
+                producto = get_object_or_404(Producto, id=producto_data['id'])
+                cantidad = producto_data['cantidad']
+
+                # Validar stock disponible
+                if producto.cantidad_en_stock < cantidad:
+                    pedido.delete()  # Eliminar el pedido si no hay stock
+                    return Response({
+                        'error': f'No hay suficiente stock disponible para {producto.nombre}'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+
+                # Crear el detalle del pedido
+                PedidoDetalle.objects.create(
+                    pedido=pedido,
+                    producto=producto,
+                    cantidad_prod=cantidad
+                )
+
+                # Actualizar stock del producto
+                producto.cantidad_en_stock -= cantidad
+                producto.save()
+
             # Serializar y retornar respuesta
             serializer = self.get_serializer(pedido)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -178,8 +176,31 @@ class PedidoViewSet(viewsets.ModelViewSet):
             return Response({
                 'error': str(e)
             }, status=status.HTTP_400_BAD_REQUEST)
-            
 
+    @action(detail=True, methods=['get'])
+    def detalles(self, request, pk=None):
+        """Obtener los detalles de un pedido específico"""
+        pedido = self.get_object()
+        detalles = pedido.detalles.all()
+        serializer = PedidoDetalleSerializer(detalles, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['put'])
+    def actualizar_estado(self, request, pk=None):
+        """Actualizar el estado de un pedido"""
+        pedido = self.get_object()
+        nuevo_estado = request.data.get('estado_compra')
+        
+        if nuevo_estado not in dict(Pedido.ESTADO_CHOICES):
+            return Response({
+                'error': 'Estado inválido'
+            }, status=status.HTTP_400_BAD_REQUEST)
+            
+        pedido.estado_compra = nuevo_estado
+        pedido.save()
+        
+        serializer = self.get_serializer(pedido)
+        return Response(serializer.data)
 
     
 

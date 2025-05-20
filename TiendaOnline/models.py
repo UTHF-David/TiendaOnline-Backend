@@ -1,29 +1,177 @@
 from django.db import models
+from django.core.validators import MinValueValidator, RegexValidator
+from django.contrib.auth.models import AbstractUser, Group, Permission, BaseUserManager
+from django.core.exceptions import ValidationError
+
+class UsuarioManager(BaseUserManager):
+    def create_user(self, email, password=None, **extra_fields):
+        if not email:
+            raise ValueError('El Email es obligatorio')
+        email = self.normalize_email(email)
+        user = self.model(email=email, **extra_fields)
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
+
+    def create_superuser(self, email, password=None, **extra_fields):
+        extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_superuser', True)
+        extra_fields.setdefault('is_active', True)
+        return self.create_user(email, password, **extra_fields)
+
+class ISVPais(models.Model):
+    """Modelo para almacenar países y sus costos de envío"""
+    id_pais = models.AutoField(primary_key=True)
+    pais = models.CharField(
+        max_length=100,
+        unique=True,
+        verbose_name='País',
+        null=False
+    )
+    costo_envio_pais = models.DecimalField(
+        max_digits=10, 
+        decimal_places=2,
+        verbose_name='Costo de Envío',
+        validators=[MinValueValidator(0)],
+        null=False
+    )
+    
+    class Meta:
+        verbose_name = 'País con ISV'
+        verbose_name_plural = 'Países con ISV'
+    
+    def __str__(self):
+        return f"{self.pais} (Envío: ${self.costo_envio_pais})"
+
+#se usa abstract para cuando se utiliza el email como login,campos_adicionales,etc
+class Usuario(AbstractUser):
+    """Modelo extendido de usuario con todos los campos requeridos"""
+    id = models.AutoField(primary_key=True)
+
+    username = None  # Deshabilitamos el campo username
+    email = models.EmailField(
+        verbose_name='Correo Electrónico',
+        unique=True,
+        null=False
+    )
+    id_usuario = models.IntegerField(         
+        verbose_name='identificador del usuario',
+        null=True,
+        unique=True
+    )
+
+    nombre_cliente = models.CharField(
+        max_length=100,
+        verbose_name='Nombre del Cliente',
+        null=False
+    )
+    apellido_cliente = models.CharField(
+        max_length=100,
+        verbose_name='Apellido del Cliente',
+        null=False
+    )
+    direccion = models.TextField(
+        verbose_name='Dirección',
+        null=False
+    )
+    pais = models.ForeignKey(
+        ISVPais,
+        on_delete=models.SET_NULL,
+        null=True,
+        verbose_name='País'
+    )
+    estado_pais = models.CharField(
+        max_length=100,
+        verbose_name='Estado/Provincia',
+        null=False
+    )
+    ciudad = models.CharField(
+        max_length=100,
+        verbose_name='Ciudad',
+        null=False
+    )
+    zip = models.CharField(
+        max_length=20,
+        verbose_name='Código Postal',
+        null=False
+    )
+    telefono = models.CharField(
+        max_length=20,
+        verbose_name='Teléfono',
+        null=False
+    )
+
+    groups = models.ManyToManyField(
+        Group,
+        verbose_name='groups',
+        blank=True,
+        help_text='The groups this user belongs to. A user will get all permissions granted to each of their groups.',
+        related_name="tienda_usuario_set",  # Nombre único
+        related_query_name="tienda_usuario",
+    )
+    user_permissions = models.ManyToManyField(
+        Permission,
+        verbose_name='user permissions',
+        blank=True,
+        help_text='Specific permissions for this user.',
+        related_name="tienda_usuario_set",  # Nombre único
+        related_query_name="tienda_usuario",
+    )
+
+    objects = UsuarioManager()  # Usamos nuestro manager personalizado
+
+    # Campos de autenticación
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = ['nombre_cliente', 'apellido_cliente']
+
+    class Meta:
+        verbose_name = 'Usuario'
+        verbose_name_plural = 'Usuarios'
+
+    def __str__(self):
+        return f"{self.nombre_cliente} {self.apellido_cliente} ({self.email})"
 
 class Producto(models.Model):
+    """Modelo para productos con color hexadecimal único"""
+    CATEGORIA_CHOICES = [
+        ('M', 'Mujeres'),
+        ('H', 'Hombres'),
+        ('U', 'Unisex')
+    ]
+    
+    TAMANO_CHOICES = [
+        ('S', 'S'),
+        ('M', 'M'),
+        ('L', 'L'),
+        ('XL', 'XL'),
+        ('XXL', 'XXL')
+    ]
+    
     id = models.AutoField(primary_key=True)
     nombre = models.CharField(
         max_length=255,
         verbose_name='Nombre del Producto',
-        help_text='El nombre del producto'
+        null=False
     )
     precio = models.DecimalField(
         max_digits=10,
         decimal_places=2,
-        verbose_name='Precio del Producto',
-        help_text='El precio del producto'
+        verbose_name='Precio',
+        validators=[MinValueValidator(0.01)],
+        null=False
     )
-    cantidad_en_stock = models.IntegerField(
-        verbose_name='Cantidad en Stock',
-        help_text='Cantidad disponible en inventario'
+    cantidad_en_stock = models.PositiveIntegerField(
+        verbose_name='Stock',
+        help_text='Cantidad disponible en inventario',
+        validators=[MinValueValidator(0)],
+        null=False
     )
-    descripcion = models.TextField(
+    desc_prod = models.TextField(
         verbose_name='Descripción del Producto',
-        help_text='Descripción detallada del producto',
         blank=True,
         null=True
     )
-    imagen_base64 = models.TextField(
+    image = models.ImageField(
         verbose_name='Imagen en Base64',
         help_text='Imagen del producto codificada en Base64',
         blank=True,
@@ -31,173 +179,215 @@ class Producto(models.Model):
     )
     categoria = models.CharField(
         max_length=3,
-        choices=[('M', 'Mujeres'), ('H', 'Hombres')],
-        verbose_name='Categoria',
-        help_text='Tamaño del producto',
-        blank=True,
-        null=True
+        choices=CATEGORIA_CHOICES,
+        verbose_name='Categoría',
+        null=False
     )
-    tamaño = models.CharField(
+    tamaño  = models.CharField(
         max_length=3,
-        choices=[('S', 'S'), ('M', 'M'), ('L', 'L'), ('XL', 'XL'), ('XXL', 'XXL')],
+        choices=TAMANO_CHOICES,
         verbose_name='Tamaño',
         help_text='Tamaño del producto',
         blank=True,
         null=True
     )
-    colores = models.TextField(        
+    colores = models.CharField(
+        max_length=7,
         verbose_name='Color Hexadecimal',
         help_text='Color en formato hexadecimal (ej. #FF0000)',
-        default='#FFFFFF',        
+        default='#FFFFFF',
+        validators=[
+            RegexValidator(
+                regex='^#[0-9A-Fa-f]{6}$',
+                message='Formato hexadecimal inválido. Debe ser como #RRGGBB'
+            )
+        ],
         null=False,
+        blank=False
     )
-
+    
+    class Meta:
+        verbose_name = 'Producto'
+        verbose_name_plural = 'Productos'
+    
+    def clean(self):
+        """Validación adicional para asegurar que el color es válido"""
+        super().clean()
+        if not self.colores.startswith('#'):
+            raise ValidationError({'colores': 'El color debe comenzar con #'})
+    
     def formatted_price(self):
+        """Devuelve el precio formateado como cadena"""
         return f"${self.precio:.2f}"
-
+    
     def __str__(self):
-        return self.nombre
-
+        return f"{self.nombre} ({self.get_categoria_display()}) - Color: {self.colores}"
 
 class Pedido(models.Model):
+    """Modelo para pedidos con relación a usuario y país ISV"""
     ESTADO_CHOICES = [
         ('Pagado', 'Pagado'),
         ('En Camino', 'En Camino'),
-        ('Recibido', 'Recibido')
+        ('Recibido', 'Recibido'),
+        ('Cancelado', 'Cancelado')
     ]
-
-    id_pedido = models.CharField(primary_key=True, max_length=255)
-    producto = models.ForeignKey(
-        Producto,
+    
+    id_pedido = models.AutoField(primary_key=True)
+    usuario = models.ForeignKey(
+        Usuario,
         on_delete=models.CASCADE,
-        verbose_name='Producto',
-        help_text='Producto asociado al pedido'
+        related_name='pedidos',
+        verbose_name='Usuario',
+        null=True,  # Temporalmente permitimos nulos
+        blank=True  # Temporalmente permitimos en blanco
     )
-    nombre_cliente = models.CharField(
+    company = models.CharField(
         max_length=255,
-        verbose_name='Nombre del Cliente',
-        help_text='El nombre del cliente que realizó el pedido'
+        verbose_name='Compañía',
+        blank=True,
+        null=True
     )
-    apellido_cliente = models.CharField(
-        max_length=255,
-        verbose_name='Apellido del Cliente',
-        help_text='El apellido del cliente que realizó el pedido',
+    direccion = models.TextField(
+        verbose_name='Dirección de Envío',
+        null=False
+    )
+    pais = models.ForeignKey(
+        ISVPais,
+        on_delete=models.SET_NULL,
         null=True,
-        blank=True
-    )
-    cantidad = models.IntegerField(
-        verbose_name='Cantidad de productos',
-        help_text='Cantidad de productos que se compraron',
-        default=0
-    )
-
-    subtotal = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        verbose_name='Subtotal',
-        help_text='Subtotal del pedido'
-    )
-    total = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        verbose_name='Total',
-        help_text='Total del pedido'
-    )
-    isv = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        default=0.15,
-        verbose_name='ISV',
-        help_text='Impuesto sobre ventas'
-    )
-    compañia = models.CharField(
-        max_length=255,
-        verbose_name='Compañia',
-        help_text='Compañia a entregar',
-        blank=True,
-        null=True
-    )
-    direccion = models.CharField(
-        max_length=255,
-        verbose_name='Dirección',
-        help_text='Dirección de entrega',
-        blank=True,
-        null=True
-    )
-    pais = models.CharField(
-        max_length=255,
-        verbose_name='Pais',
-        help_text='Pais de entrega',
-        blank=True,
-        null=True
+        verbose_name='País'
     )
     estado_pais = models.CharField(
-        max_length=255,
-        verbose_name='Estado',
-        help_text='Estado del pais de entregas',
-        blank=True,
-        null=True
+        max_length=100,
+        verbose_name='Estado/Provincia',
+        null=False        
     )
     ciudad = models.CharField(
-        max_length=255,
+        max_length=100,
         verbose_name='Ciudad',
-        help_text='Ciudad de entrega',
-        blank=True,
-        null=True
+        null=False
     )
     zip = models.CharField(
-        max_length=255,
-        verbose_name='codigo postal',
-        help_text='Codigo Postal de entrega',
-        blank=True,
-        null=True
+        max_length=20,
+        verbose_name='Código Postal',
+        null=False
     )
     correo = models.EmailField(
         verbose_name='Correo Electrónico',
-        help_text='Correo electrónico del cliente',
-        blank=True,
-        null=True
+        null=False
     )
     telefono = models.CharField(
         max_length=20,
         verbose_name='Teléfono',
-        help_text='Teléfono del cliente',
-        blank=True,
-        null=True
+        null=False
     )
-    estado = models.CharField(
-        max_length=50,
+    estado_compra = models.CharField(
+        max_length=20,
         choices=ESTADO_CHOICES,
-        verbose_name='Estado del Pedido',
-        help_text='Estado actual del pedido',
         default='Pagado',
+        verbose_name='Estado del Pedido'        
     )
-    descripcion_adicional = models.TextField(
+    desc_adicional = models.TextField(
         verbose_name='Descripción Adicional',
-        help_text='Información adicional sobre el pedido',
         blank=True,
         null=True
     )
-    fecha_compra = models.DateField(
-        verbose_name='Fecha de Compra',
-        help_text='Fecha en que se realizó el pedido'
+    fecha_compra = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='Fecha de Creación',
+        null=False
     )
-    fecha_entrega = models.DateField(
-        verbose_name='Fecha de Entrega',
-        help_text='Fecha estimada de entrega',
+    fecha_entrega = models.DateTimeField(
+        null=True,
         blank=True,
-        null=True
+        verbose_name='Fecha de Entrega'
     )
-
-    def formatted_subtotal(self):
-        return f"${self.subtotal:.2f}"
-
-    def formatted_total(self):
-        return f"${self.total:.2f}"
-
-    def get_nombre_producto(self):
-        return self.producto.nombre if self.producto else "Producto no especificado"
-
-    def __str__(self):
-        return f"Pedido #{self.id_pedido} - {self.nombre_cliente} - {self.get_nombre_producto()}"
     
+    class Meta:
+        verbose_name = 'Pedido'
+        verbose_name_plural = 'Pedidos'
+        ordering = ['-fecha_compra']
+    
+    def save(self, *args, **kwargs):
+        """Autocompleta datos del usuario si no se especifican"""
+        if not self.pk:  # Solo para nuevos pedidos
+            if not all([self.direccion, self.ciudad, self.zip, self.telefono, self.correo]):
+                self.direccion = self.usuario.direccion
+                self.ciudad = self.usuario.ciudad
+                self.zip = self.usuario.zip
+                self.telefono = self.usuario.telefono
+                self.correo = self.usuario.email
+                if self.usuario.pais:
+                    self.pais = self.usuario.pais
+                    self.estado_pais = self.usuario.estado_pais
+        super().save(*args, **kwargs)
+    
+    @property
+    def total_pedido(self):
+        """Calcula el total sumando todos los detalles"""
+        return sum(detalle.total for detalle in self.detalles.all())
+    
+    def __str__(self):
+        return f"Pedido #{self.id_pedido} - {self.usuario.nombre_cliente}"
+
+class PedidoDetalle(models.Model):
+    """Modelo para detalles de pedido con cálculos automáticos"""
+    pedido = models.ForeignKey(
+        Pedido,
+        on_delete=models.CASCADE,
+        related_name='detalles',
+        verbose_name='Pedido',
+        null=False
+    )
+    producto = models.ForeignKey(
+        Producto,
+        on_delete=models.CASCADE,
+        verbose_name='Producto',
+        null=False
+    )
+    cantidad_prod = models.PositiveIntegerField(
+        verbose_name='Cantidad',
+        validators=[MinValueValidator(1)],
+        null=False
+    )
+    subtotal = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(0)],
+        null=False
+    )
+    isv = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        verbose_name='ISV',
+        validators=[MinValueValidator(0)],
+        null=False
+    )
+    envio = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        verbose_name='Envío',
+        validators=[MinValueValidator(0)],
+        null=False
+    )
+    total = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(0)],
+        null=False
+    )
+    
+    class Meta:
+        verbose_name = 'Detalle de Pedido'
+        verbose_name_plural = 'Detalles de Pedido'
+    
+    def save(self, *args, **kwargs):
+        """Calcula automáticamente los valores antes de guardar"""
+        self.subtotal = self.producto.precio * self.cantidad_prod
+        self.envio = self.pedido.pais.costo_envio_pais if self.pedido.pais else 0
+        self.isv = self.subtotal * 0.15  # 15% de impuesto
+        self.total = self.subtotal + self.isv + self.envio
+        super().save(*args, **kwargs)
+    
+    def __str__(self):
+        return f"Detalle #{self.id} - {self.cantidad_prod}x {self.producto.nombre}"

@@ -1,6 +1,20 @@
 from rest_framework import serializers
-from .models import Producto, Pedido
+from .models import Producto, Pedido, PedidoDetalle, Usuario, ISVPais
 from django.contrib.auth.models import User
+
+
+class ISVPaisSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ISVPais
+        fields = '__all__'
+
+
+class UsuarioSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Usuario
+        fields = ['id', 'email', 'nombre_cliente', 'apellido_cliente', 'direccion', 
+                 'pais', 'estado_pais', 'ciudad', 'zip', 'telefono']
+        read_only_fields = ['id']
 
 
 class ProductoSerializer(serializers.ModelSerializer):
@@ -33,10 +47,43 @@ class ProductoSerializer(serializers.ModelSerializer):
         except Exception as e:
             raise serializers.ValidationError(f"Error al procesar la imagen: {str(e)}")
 
+
+class PedidoDetalleSerializer(serializers.ModelSerializer):
+    producto_nombre = serializers.CharField(source='producto.nombre', read_only=True)
+    producto_precio = serializers.DecimalField(source='producto.precio', max_digits=10, decimal_places=2, read_only=True)
+
+    class Meta:
+        model = PedidoDetalle
+        fields = ['id', 'producto', 'producto_nombre', 'producto_precio', 
+                 'cantidad_prod', 'subtotal', 'isv', 'envio', 'total']
+        read_only_fields = ['subtotal', 'isv', 'envio', 'total']
+
+
 class PedidoSerializer(serializers.ModelSerializer):
+    detalles = PedidoDetalleSerializer(many=True, read_only=True)
+    usuario_nombre = serializers.CharField(source='usuario.nombre_cliente', read_only=True)
+    pais_nombre = serializers.CharField(source='pais.pais', read_only=True)
+    total_pedido = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+
     class Meta:
         model = Pedido
-        fields = '__all__'
+        fields = ['id_pedido', 'usuario', 'usuario_nombre', 'company', 'direccion',
+                 'pais', 'pais_nombre', 'estado_pais', 'ciudad', 'zip', 'correo',
+                 'telefono', 'estado_compra', 'desc_adicional', 'fecha_compra',
+                 'fecha_entrega', 'detalles', 'total_pedido']
+        read_only_fields = ['id_pedido', 'fecha_compra', 'total_pedido']
+
+
+class PedidoCreateSerializer(serializers.ModelSerializer):
+    productos = serializers.ListField(
+        child=serializers.DictField(),
+        write_only=True
+    )
+
+    class Meta:
+        model = Pedido
+        fields = ['usuario', 'company', 'direccion', 'pais', 'estado_pais',
+                 'ciudad', 'zip', 'correo', 'telefono', 'desc_adicional', 'productos']
 
 
 class UsersSerializer(serializers.ModelSerializer):
