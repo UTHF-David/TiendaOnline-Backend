@@ -171,7 +171,7 @@ class Producto(models.Model):
         blank=True,
         null=True
     )
-    image = models.ImageField(
+    image = models.TextField(
         verbose_name='Imagen en Base64',
         help_text='Imagen del producto codificada en Base64',
         blank=True,
