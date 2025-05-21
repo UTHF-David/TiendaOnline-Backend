@@ -12,8 +12,7 @@ class ISVPaisSerializer(serializers.ModelSerializer):
 class UsuarioSerializer(serializers.ModelSerializer):
     class Meta:
         model = Usuario
-        fields = ['id', 'email', 'nombre_cliente', 'apellido_cliente', 'direccion', 
-                 'pais', 'estado_pais', 'ciudad', 'zip', 'telefono']
+        fields = '__all__'
         read_only_fields = ['id']
 
 
