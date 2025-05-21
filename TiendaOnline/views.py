@@ -18,6 +18,7 @@ class ProductoViewSet(viewsets.ModelViewSet):
     queryset = Producto.objects.all()
     serializer_class = ProductoSerializer
 
+    #comienzo de cuenta, login,register,profile
     @api_view(['POST'])
     @permission_classes([AllowAny])
     def login(request):
@@ -60,17 +61,33 @@ class ProductoViewSet(viewsets.ModelViewSet):
             }, status=status.HTTP_400_BAD_REQUEST)
         
 
-    @api_view(['POST'])
-    #esto enviara un header con el token para la verificacion
+    @api_view(['PUT'])
     @authentication_classes([TokenAuthentication]) 
-    #con esto le decimos que es una ruta protegida
     @permission_classes([IsAuthenticated])
     def profile(request):
-       
+        try:
+            user = request.user
+            serializer = UsuarioSerializer(user, data=request.data, partial=True)
+            
+            if serializer.is_valid():
+                # Si se proporciona una nueva contraseña, actualizarla
+                if 'password' in request.data:
+                    user.set_password(request.data['password'])
+                
+                serializer.save()
+                return Response({
+                    'message': 'Perfil actualizado exitosamente',
+                    'user': serializer.data
+                }, status=status.HTTP_200_OK)
+            
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            
+        except Exception as e:
+            return Response({
+                'error': str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
 
-        return Response("Haz iniciado sesion con {}".format(request.user.email),status=status.HTTP_200_OK)
-    
-    #Fin de linea de pruebas
+    #Fin de datos de cuenta
 
     def create(self, request, *args, **kwargs):
         try:
