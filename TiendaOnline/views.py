@@ -34,7 +34,7 @@ class ProductoViewSet(viewsets.ModelViewSet):
 
         serializer = UsuarioSerializer(instance=user)  
 
-        return Response({"token":token.key, "email":serializer.data},status=status.HTTP_200_OK)
+        return Response({"token":token.key, "email":serializer.data},status=status.HTTP_200_OK) 
  
     
     @api_view(['POST'])
