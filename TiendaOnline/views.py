@@ -1,18 +1,76 @@
 from rest_framework.parsers import MultiPartParser, FormParser
-from .serializer import ProductoSerializer, PedidoSerializer, PedidoDetalleSerializer
+from .serializer import ProductoSerializer, PedidoSerializer, PedidoDetalleSerializer,UsuarioSerializer
 from django.shortcuts import get_object_or_404
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes, authentication_classes
 from rest_framework.response import Response
-from rest_framework import viewsets, status
-
+from rest_framework import viewsets, status 
+from rest_framework.permissions import AllowAny
 from .models import Producto, Pedido, PedidoDetalle
-
+from TiendaOnline.models import Usuario
+from rest_framework.authtoken.models import Token
+from rest_framework.authentication import TokenAuthentication
+from rest_framework.permissions import IsAuthenticated
 import base64
+
 
 class ProductoViewSet(viewsets.ModelViewSet):
     parser_classes = [MultiPartParser, FormParser]
     queryset = Producto.objects.all()
     serializer_class = ProductoSerializer
+
+    @api_view(['POST'])
+    @permission_classes([AllowAny])
+    def login(request):
+        
+        #Esto nos ayuda a verifcar si el usuario existe para asi proseguir
+        user = get_object_or_404(Usuario,email=request.data['email'])
+
+        if not user.check_password(request.data['password']):
+            return Response({"error":"Contraseña Invalida"},status=status.HTTP_400_BAD_REQUEST)
+
+        #Si la contraseña es correcta lo siguente:
+        #el created es para confirmar que el token se creo
+        token,created = Token.objects.get_or_create(user=user)  
+
+        serializer = UsuarioSerializer(instance=user)  
+
+        return Response({"token":token.key, "email":serializer.data},status=status.HTTP_200_OK)
+ 
+    
+    @api_view(['POST'])
+    @permission_classes([AllowAny])
+    def register(request):
+        try:
+            serializer = UsuarioSerializer(data=request.data)
+            if serializer.is_valid():
+                user = serializer.save()
+                user.set_password(request.data.get('password'))
+                user.save()
+                
+                token = Token.objects.create(user=user)
+                return Response({
+                    'token': token.key,
+                    'user': serializer.data
+                }, status=status.HTTP_201_CREATED)
+            
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({
+                'error': str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+
+    @api_view(['POST'])
+    #esto enviara un header con el token para la verificacion
+    @authentication_classes([TokenAuthentication]) 
+    #con esto le decimos que es una ruta protegida
+    @permission_classes([IsAuthenticated])
+    def profile(request):
+       
+
+        return Response("Haz iniciado sesion con {}".format(request.user.email),status=status.HTTP_200_OK)
+    
+    #Fin de linea de pruebas
 
     def create(self, request, *args, **kwargs):
         try:

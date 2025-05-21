@@ -54,25 +54,20 @@ class Usuario(AbstractUser):
         unique=True,
         null=False
     )
-    id_usuario = models.IntegerField(         
-        verbose_name='identificador del usuario',
-        null=True,
-        unique=True
-    )
-
+    
     nombre_cliente = models.CharField(
         max_length=100,
         verbose_name='Nombre del Cliente',
-        null=False
+        null=True
     )
     apellido_cliente = models.CharField(
         max_length=100,
         verbose_name='Apellido del Cliente',
-        null=False
+        null=True
     )
     direccion = models.TextField(
         verbose_name='Dirección',
-        null=False
+        null=True
     )
     pais = models.ForeignKey(
         ISVPais,
@@ -83,22 +78,22 @@ class Usuario(AbstractUser):
     estado_pais = models.CharField(
         max_length=100,
         verbose_name='Estado/Provincia',
-        null=False
+        null=True
     )
     ciudad = models.CharField(
         max_length=100,
         verbose_name='Ciudad',
-        null=False
+        null=True
     )
     zip = models.CharField(
         max_length=20,
         verbose_name='Código Postal',
-        null=False
+        null=True
     )
     telefono = models.CharField(
         max_length=20,
         verbose_name='Teléfono',
-        null=False
+        null=True
     )
 
     groups = models.ManyToManyField(

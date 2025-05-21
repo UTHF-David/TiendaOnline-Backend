@@ -2,7 +2,6 @@ from django.urls import path, include
 from django.contrib import admin
 from .views import ProductoViewSet, PedidoViewSet # Importa los viewsets de Producto y Pedido
 from rest_framework.routers import DefaultRouter #importacion del router
-from .views import ProductoViewSet, PedidoViewSet  # Importa la vista personalizada
 #from rest_framework_simplejwt.views import TokenObtainPairView,TokenRefreshView
 
 

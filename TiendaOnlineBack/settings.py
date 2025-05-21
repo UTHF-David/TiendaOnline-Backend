@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'TiendaOnline',
     'coreapi',    
+    'rest_framework.authtoken'
     
 
     
@@ -146,6 +147,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "https://sage-cannoli-55f8a1.netlify.app",
     "https://tiendaonline-backend-yaoo.onrender.com",
+    "http://localhost:8000",
 ]
 
 CORS_ALLOW_ALL_ORIGINS = True
@@ -157,9 +159,20 @@ CORS_ALLOW_METHODS = [
     'PUT',
     'DELETE',    
     'PATCH',
-    
+    'OPTIONS',
 ]
 
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
 
 REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.coreapi.AutoSchema',
