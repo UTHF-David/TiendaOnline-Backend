@@ -43,6 +43,8 @@ class ISVPais(models.Model):
     def __str__(self):
         return f"{self.pais} (Envío: ${self.costo_envio_pais})"
 
+
+##USUARIO
 #se usa abstract para cuando se utiliza el email como login,campos_adicionales,etc
 class Usuario(AbstractUser):
     """Modelo extendido de usuario con todos los campos requeridos"""
@@ -125,6 +127,8 @@ class Usuario(AbstractUser):
 
     def __str__(self):
         return f"{self.nombre_cliente} {self.apellido_cliente} ({self.email})"
+
+    ###Productos
 
 class Producto(models.Model):
     """Modelo para productos con color hexadecimal único"""
@@ -217,6 +221,8 @@ class Producto(models.Model):
     
     def __str__(self):
         return f"{self.nombre} ({self.get_categoria_display()}) - Color: {self.colores}"
+
+    ###Pedido
 
 class Pedido(models.Model):
     """Modelo para pedidos con relación a usuario y país ISV"""
@@ -324,6 +330,9 @@ class Pedido(models.Model):
     
     def __str__(self):
         return f"Pedido #{self.id_pedido} - {self.usuario.nombre_cliente}"
+
+
+##PEDIDO DETALLE
 
 class PedidoDetalle(models.Model):
     """Modelo para detalles de pedido con cálculos automáticos"""

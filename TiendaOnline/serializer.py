@@ -9,7 +9,14 @@ class ISVPaisSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+#Con este serializer se puede crear un usuario con un pais
 class UsuarioSerializer(serializers.ModelSerializer):
+    pais = serializers.PrimaryKeyRelatedField(
+        queryset=ISVPais.objects.all(),
+        required=False,
+        allow_null=True
+    )   
+
     class Meta:
         model = Usuario
         fields = '__all__'
