@@ -1,16 +1,16 @@
 from django.urls import path, include
 from django.contrib import admin
-from .views import ProductoViewSet, PedidoViewSet, ISVPaisViewSet, UsuarioViewSet, PedidoDetalleViewSet # Importa los viewsets de Producto y Pedido
-from rest_framework.routers import DefaultRouter #importacion del router
+from .views import ProductoViewSet, PedidoViewSet, UsuarioViewSet, ISVPaisViewSet, PedidoDetalleViewSet
+from rest_framework.routers import DefaultRouter
 #from rest_framework_simplejwt.views import TokenObtainPairView,TokenRefreshView
 
 
-# Importa el viewset de Producto y Pedido
-router = DefaultRouter() #creacion del router
-router.register(r'productos', ProductoViewSet)  # /api/productos/
-router.register(r'pedidos', PedidoViewSet)     # /api/pedidos/
-router.register(r'paises', ISVPaisViewSet)
+# Creación del router
+router = DefaultRouter()
+router.register(r'productos', ProductoViewSet)
+router.register(r'pedidos', PedidoViewSet)
 router.register(r'usuarios', UsuarioViewSet)
+router.register(r'paises', ISVPaisViewSet)
 router.register(r'detalles-pedido', PedidoDetalleViewSet)
 
 # r'tareas' es la ruta de la api

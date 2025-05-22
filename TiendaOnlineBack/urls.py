@@ -20,7 +20,7 @@ from django.conf import settings # Importa la configuración de Django
 from django.conf.urls.static import static # Importa la función para servir archivos estáticos
 from rest_framework.documentation import include_docs_urls # Importa la función para incluir la documentación de la API
 from django.views.static import serve # Importa la vista para servir archivos estáticos
-from TiendaOnline.views import ProductoViewSet
+from TiendaOnline.views import UsuarioViewSet
 
 urlpatterns = [
     path('admin/', admin.site.urls),        
@@ -29,9 +29,9 @@ urlpatterns = [
     path('docs/', include_docs_urls(title='API Documentation')), # Incluye la documentación de la API
 
     #tokens
-    path('login/', ProductoViewSet.login, name='login'),
-    path('register/', ProductoViewSet.register, name='register'),
-    path('profile/', ProductoViewSet.profile, name='profile'),
+    path('login/', UsuarioViewSet.login, name='login'),
+    path('register/', UsuarioViewSet.register, name='register'),
+    path('profile/', UsuarioViewSet.profile, name='profile'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) # Para servir archivos estáticos en desarrollo
 
 

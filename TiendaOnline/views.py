@@ -18,90 +18,6 @@ class ProductoViewSet(viewsets.ModelViewSet):
     queryset = Producto.objects.all()
     serializer_class = ProductoSerializer
 
-class UsuarioViewSet(viewsets.ModelViewSet):
-    queryset = Usuario.objects.all()
-    serializer_class = UsuarioSerializer
-
-class ISVPaisViewSet(viewsets.ModelViewSet):
-    queryset = ISVPais.objects.all()
-    serializer_class = ISVPaisSerializer
-
-class PedidoDetalleViewSet(viewsets.ModelViewSet):
-    queryset = PedidoDetalle.objects.all()
-    serializer_class = PedidoDetalleSerializer
-
-
-    #comienzo de cuenta, login,register,profile
-    @api_view(['POST'])
-    @permission_classes([AllowAny])
-    def login(request):
-        
-        #Esto nos ayuda a verifcar si el usuario existe para asi proseguir
-        user = get_object_or_404(Usuario,email=request.data['email'])
-
-        if not user.check_password(request.data['password']):
-            return Response({"error":"Contraseña Invalida"},status=status.HTTP_400_BAD_REQUEST)
-
-        #Si la contraseña es correcta lo siguente:
-        #el created es para confirmar que el token se creo
-        token,created = Token.objects.get_or_create(user=user)  
-
-        serializer = UsuarioSerializer(instance=user)  
-
-        return Response({"token":token.key, "user":serializer.data},status=status.HTTP_200_OK) 
- 
-    
-    @api_view(['POST'])
-    @permission_classes([AllowAny])
-    def register(request):
-        try:
-            serializer = UsuarioSerializer(data=request.data)
-            if serializer.is_valid():
-                user = serializer.save()
-                user.set_password(request.data.get('password'))
-                user.save()
-                
-                token = Token.objects.create(user=user)
-                return Response({
-                    'token': token.key,
-                    'user': serializer.data
-                }, status=status.HTTP_201_CREATED)
-            
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
-            return Response({
-                'error': str(e)
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-
-    @api_view(['PUT'])
-    @authentication_classes([TokenAuthentication]) 
-    @permission_classes([IsAuthenticated])
-    def profile(request):
-        try:
-            user = request.user
-            serializer = UsuarioSerializer(user, data=request.data, partial=True)
-            
-            if serializer.is_valid():
-                # Si se proporciona una nueva contraseña, actualizarla
-                if 'password' in request.data:
-                    user.set_password(request.data['password'])
-                
-                serializer.save()
-                return Response({
-                    'message': 'Perfil actualizado exitosamente',
-                    'user': serializer.data
-                }, status=status.HTTP_200_OK)
-            
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-            
-        except Exception as e:
-            return Response({
-                'error': str(e)
-            }, status=status.HTTP_400_BAD_REQUEST)
-
-    #Fin de datos de cuenta
-
     def create(self, request, *args, **kwargs):
         try:
             # Obtener el archivo de imagen
@@ -207,6 +123,83 @@ class PedidoDetalleViewSet(viewsets.ModelViewSet):
             }, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class UsuarioViewSet(viewsets.ModelViewSet):
+    queryset = Usuario.objects.all()
+    serializer_class = UsuarioSerializer
+
+    @api_view(['POST'])
+    @permission_classes([AllowAny])
+    def login(request):
+        #Esto nos ayuda a verifcar si el usuario existe para asi proseguir
+        user = get_object_or_404(Usuario,email=request.data['email'])
+
+        if not user.check_password(request.data['password']):
+            return Response({"error":"Contraseña Invalida"},status=status.HTTP_400_BAD_REQUEST)
+
+        #Si la contraseña es correcta lo siguente:
+        #el created es para confirmar que el token se creo
+        token,created = Token.objects.get_or_create(user=user)  
+
+        serializer = UsuarioSerializer(instance=user)  
+
+        return Response({"token":token.key, "user":serializer.data},status=status.HTTP_200_OK)
+ 
+    @api_view(['POST'])
+    @permission_classes([AllowAny])
+    def register(request):
+        try:
+            serializer = UsuarioSerializer(data=request.data)
+            if serializer.is_valid():
+                user = serializer.save()
+                user.set_password(request.data.get('password'))
+                user.save()
+                
+                token = Token.objects.create(user=user)
+                return Response({
+                    'token': token.key,
+                    'user': serializer.data
+                }, status=status.HTTP_201_CREATED)
+            
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({
+                'error': str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+    @api_view(['PUT'])
+    @authentication_classes([TokenAuthentication]) 
+    @permission_classes([IsAuthenticated])
+    def profile(request):
+        try:
+            user = request.user
+            serializer = UsuarioSerializer(user, data=request.data, partial=True)
+            
+            if serializer.is_valid():
+                # Si se proporciona una nueva contraseña, actualizarla
+                if 'password' in request.data:
+                    user.set_password(request.data['password'])
+                
+                serializer.save()
+                return Response({
+                    'message': 'Perfil actualizado exitosamente',
+                    'user': serializer.data
+                }, status=status.HTTP_200_OK)
+            
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            
+        except Exception as e:
+            return Response({
+                'error': str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+class ISVPaisViewSet(viewsets.ModelViewSet):
+    queryset = ISVPais.objects.all()
+    serializer_class = ISVPaisSerializer
+
+class PedidoDetalleViewSet(viewsets.ModelViewSet):
+    queryset = PedidoDetalle.objects.all()
+    serializer_class = PedidoDetalleSerializer
 
 class PedidoViewSet(viewsets.ModelViewSet):
     queryset = Pedido.objects.all()
