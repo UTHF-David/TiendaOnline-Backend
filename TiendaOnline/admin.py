@@ -7,4 +7,4 @@ from .models import Producto, Pedido, Usuario, PedidoDetalle
 admin.site.register(Producto)
 admin.site.register(Pedido)
 admin.site.register(Usuario)
-admin.site.register(PedidoDetalle)
+admin.site.register(PedidoDetalle) 
