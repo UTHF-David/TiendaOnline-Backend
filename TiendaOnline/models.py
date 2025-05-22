@@ -71,9 +71,7 @@ class Usuario(AbstractUser):
         verbose_name='Dirección',
         null=True
     )
-    pais = models.ForeignKey(
-        ISVPais,
-        on_delete=models.SET_NULL,
+    pais = models.IntegerField(                
         null=True,
         verbose_name='País'
     )
