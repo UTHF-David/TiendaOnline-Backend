@@ -71,7 +71,8 @@ class Usuario(AbstractUser):
         verbose_name='Dirección',
         null=True
     )
-    pais = models.IntegerField(                
+    pais = models.CharField(                
+        max_length=100,
         null=True,
         verbose_name='País'
     )
