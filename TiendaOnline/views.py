@@ -1,11 +1,11 @@
 from rest_framework.parsers import MultiPartParser, FormParser
-from .serializer import ProductoSerializer, PedidoSerializer, PedidoDetalleSerializer,UsuarioSerializer
+from .serializer import ProductoSerializer, PedidoSerializer, PedidoDetalleSerializer,UsuarioSerializer, ISVPaisSerializer
 from django.shortcuts import get_object_or_404
 from rest_framework.decorators import action, api_view, permission_classes, authentication_classes
 from rest_framework.response import Response
 from rest_framework import viewsets, status 
 from rest_framework.permissions import AllowAny
-from .models import Producto, Pedido, PedidoDetalle
+from .models import ISVPais, Producto, Pedido, PedidoDetalle
 from TiendaOnline.models import Usuario
 from rest_framework.authtoken.models import Token
 from rest_framework.authentication import TokenAuthentication
@@ -17,6 +17,19 @@ class ProductoViewSet(viewsets.ModelViewSet):
     parser_classes = [MultiPartParser, FormParser]
     queryset = Producto.objects.all()
     serializer_class = ProductoSerializer
+
+class UsuarioViewSet(viewsets.ModelViewSet):
+    queryset = Usuario.objects.all()
+    serializer_class = UsuarioSerializer
+
+class ISVPaisViewSet(viewsets.ModelViewSet):
+    queryset = ISVPais.objects.all()
+    serializer_class = ISVPaisSerializer
+
+class PedidoDetalleViewSet(viewsets.ModelViewSet):
+    queryset = PedidoDetalle.objects.all()
+    serializer_class = PedidoDetalleSerializer
+
 
     #comienzo de cuenta, login,register,profile
     @api_view(['POST'])
