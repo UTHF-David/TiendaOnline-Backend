@@ -1,26 +1,36 @@
 from rest_framework import serializers
-from .models import Producto, Pedido, PedidoDetalle, Usuario, ISVPais
+from .models import Producto, Pedido, PedidoDetalle, Usuario
 from django.contrib.auth.models import User
 
 
-class ISVPaisSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ISVPais
-        fields = '__all__'
+
 
 
 #Con este serializer se puede crear un usuario con un pais
 class UsuarioSerializer(serializers.ModelSerializer):
-    pais = serializers.PrimaryKeyRelatedField(
-        queryset=ISVPais.objects.all(),
-        required=False,
-        allow_null=True
-    )   
-
     class Meta:
         model = Usuario
         fields = '__all__'
         read_only_fields = ['id']
+        extra_kwargs = {
+            'password': {'write_only': True}
+        }
+
+    def create(self, validated_data):
+        password = validated_data.pop('password', None)
+        user = super().create(validated_data)
+        if password:
+            user.set_password(password)
+            user.save()
+        return user
+
+    def update(self, instance, validated_data):
+        password = validated_data.pop('password', None)
+        user = super().update(instance, validated_data)
+        if password:
+            user.set_password(password)
+            user.save()
+        return user
 
 
 class ProductoSerializer(serializers.ModelSerializer):

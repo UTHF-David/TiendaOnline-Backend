@@ -18,23 +18,6 @@ class UsuarioManager(BaseUserManager):
         extra_fields.setdefault('is_superuser', True)
         extra_fields.setdefault('is_active', True)
         return self.create_user(email, password, **extra_fields)
-
-class ISVPais(models.Model):
-    """Modelo para almacenar países y sus costos de envío"""
-    id_pais = models.AutoField(primary_key=True)
-    pais = models.CharField(
-        max_length=100,
-        unique=True,
-        verbose_name='País',
-        null=False
-    )
-    costo_envio_pais = models.DecimalField(
-        max_digits=10, 
-        decimal_places=2,
-        verbose_name='Costo de Envío',
-        validators=[MinValueValidator(0)],
-        null=False
-    )
     
     class Meta:
         verbose_name = 'País con ISV'
@@ -251,9 +234,8 @@ class Pedido(models.Model):
         verbose_name='Dirección de Envío',
         null=False
     )
-    pais = models.ForeignKey(
-        ISVPais,
-        on_delete=models.SET_NULL,
+    pais = models.CharField(
+        max_length=100,        
         null=True,
         verbose_name='País'
     )
