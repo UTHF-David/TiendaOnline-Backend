@@ -27,7 +27,7 @@ urlpatterns = [
     path('api/v1/', include('TiendaOnline.urls')), # Incluye las URLs de la aplicación 'tienda'
     path('media/<path:path>', serve, {'document_root': settings.MEDIA_ROOT}),
     path('docs/', include_docs_urls(title='API Documentation')), # Incluye la documentación de la API
-
+    
     #tokens
     path('login/', UsuarioViewSet.login, name='login'),
     path('register/', UsuarioViewSet.register, name='register'),

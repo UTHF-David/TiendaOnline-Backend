@@ -9,6 +9,7 @@ from .models import Producto, Pedido, PedidoDetalle
 from TiendaOnline.models import Usuario
 from rest_framework.authtoken.models import Token
 from rest_framework.authentication import TokenAuthentication
+from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 import base64
 
@@ -281,4 +282,67 @@ class PedidoViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     
+#movimientos
 
+
+class RegistrarMovimientoView(APIView):
+    def post(self, request):
+        try:
+            data = request.data
+            admin_user = Usuario.objects.get(id=1)  # Usuario admin
+            
+            # Validación básica
+            required_fields = ['producto_id', 'cantidad', 'tipo_salida', 'compania_destino']
+            if not all(field in data for field in required_fields):
+                return Response({'error': 'Faltan campos requeridos'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            producto = Producto.objects.get(id=data['producto_id'])
+            
+            # Verificar stock
+            if producto.cantidad_en_stock < data['cantidad']:
+                return Response(
+                    {'error': f'Stock insuficiente. Disponible: {producto.cantidad_en_stock}'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Crear el pedido de movimiento interno
+            pedido = Pedido.objects.create(
+                usuario=admin_user,
+                company=data['compania_destino'],
+                direccion=admin_user.direccion,
+                pais=admin_user.pais,
+                estado_pais=admin_user.estado_pais,
+                ciudad=admin_user.ciudad,
+                zip=admin_user.zip,
+                correo=admin_user.email,
+                telefono=admin_user.telefono,
+                estado_compra='Entregado',
+                desc_adicional=f"{data['tipo_salida']} - {data.get('descripcion', '')}",
+                fecha_entrega=timezone.now()
+            )
+            
+            # Crear detalle del pedido (con valores en 0)
+            PedidoDetalle.objects.create(
+                pedido=pedido,
+                producto=producto,
+                cantidad_prod=data['cantidad'],
+                subtotal=0,
+                isv=0,
+                envio=0,
+                total=0
+            )
+            
+            # Actualizar stock
+            producto.cantidad_en_stock -= data['cantidad']
+            producto.save()
+            
+            return Response({
+                'success': True,
+                'pedido_id': pedido.id_pedido,
+                'stock_actual': producto.cantidad_en_stock
+            }, status=status.HTTP_201_CREATED)
+            
+        except Producto.DoesNotExist:
+            return Response({'error': 'Producto no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

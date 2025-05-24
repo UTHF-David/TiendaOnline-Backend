@@ -1,6 +1,6 @@
 from django.urls import path, include
 from django.contrib import admin
-from .views import ProductoViewSet, PedidoViewSet, UsuarioViewSet, PedidoDetalleViewSet
+from .views import ProductoViewSet, PedidoViewSet, UsuarioViewSet, PedidoDetalleViewSet,RegistrarMovimientoView
 from rest_framework.routers import DefaultRouter
 #from rest_framework_simplejwt.views import TokenObtainPairView,TokenRefreshView
 
@@ -20,7 +20,9 @@ router.register(r'detalles-pedido', PedidoDetalleViewSet)
 #Creacion de las rutas de la api
 urlpatterns = [
     path('', include(router.urls)), #ruta de la api url base
-    path('admin/', admin.site.urls), #ruta del admin    
+    path('admin/', admin.site.urls), #ruta del admin            
+    path('movimientos/', RegistrarMovimientoView.as_view(), name='registrar_movimiento'),
+
     #path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),  
     #path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
         

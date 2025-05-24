@@ -284,6 +284,9 @@ class Pedido(models.Model):
         blank=True,
         verbose_name='Fecha de Entrega'
     )
+    es_movimiento_interno = models.BooleanField(
+        default=False,
+        verbose_name='Movimiento interno (no comercial)')
     
     class Meta:
         verbose_name = 'Pedido'
