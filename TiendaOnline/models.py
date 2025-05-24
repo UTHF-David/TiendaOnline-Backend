@@ -372,8 +372,16 @@ class PedidoDetalle(models.Model):
     def save(self, *args, **kwargs):
         """Calcula automáticamente los valores antes de guardar"""
         self.subtotal = self.producto.precio * self.cantidad_prod
-        self.envio = self.pedido.pais.costo_envio_pais if self.pedido.pais else 0
-        self.isv = self.subtotal * 0.15  # 15% de impuesto
+        
+        # Costos fijos por país (solución temporal)
+        costos_envio = {
+            'Honduras': 5.00,
+            'Guatemala': 7.00,
+            # Agrega más países según necesites
+        }
+        
+        self.envio = costos_envio.get(self.pedido.pais, 0) if self.pedido.pais else 0
+        self.isv = self.subtotal * 0.15
         self.total = self.subtotal + self.isv + self.envio
         super().save(*args, **kwargs)
     
