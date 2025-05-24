@@ -2,6 +2,7 @@ from django.db import models
 from django.core.validators import MinValueValidator, RegexValidator
 from django.contrib.auth.models import AbstractUser, Group, Permission, BaseUserManager
 from django.core.exceptions import ValidationError
+from decimal import Decimal
 
 class UsuarioManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
@@ -371,18 +372,22 @@ class PedidoDetalle(models.Model):
     
     def save(self, *args, **kwargs):
         """Calcula automáticamente los valores antes de guardar"""
-        self.subtotal = self.producto.precio * self.cantidad_prod
+        from decimal import Decimal  # Asegúrate de importar Decimal
         
-        # Costos fijos por país (solución temporal)
+        # Convierte el 0.15 a Decimal antes de multiplicar
+        self.subtotal = self.producto.precio * Decimal(str(self.cantidad_prod))
+        self.isv = self.subtotal * Decimal('0.15')  # Usa string para precisión exacta
+        
+        # Costo de envío (asegúrate que sea Decimal)
         costos_envio = {
-            'Honduras': 5.00,
-            'Guatemala': 7.00,
+            'Honduras': Decimal('5.00'),
+            'Guatemala': Decimal('7.00'),
             # Agrega más países según necesites
         }
         
-        self.envio = costos_envio.get(self.pedido.pais, 0) if self.pedido.pais else 0
-        self.isv = self.subtotal * 0.15
+        self.envio = costos_envio.get(self.pedido.pais, Decimal('0')) if self.pedido.pais else Decimal('0')
         self.total = self.subtotal + self.isv + self.envio
+        
         super().save(*args, **kwargs)
     
     def __str__(self):
