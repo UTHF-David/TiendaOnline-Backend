@@ -1,5 +1,5 @@
 from rest_framework.parsers import MultiPartParser, FormParser
-from .serializer import ProductoSerializer, PedidoSerializer, PedidoDetalleSerializer,UsuarioSerializer
+from .serializer import ProductoSerializer, PedidoSerializer, PedidoDetalleSerializer, UsuarioSerializer
 from django.shortcuts import get_object_or_404
 from rest_framework.decorators import action, api_view, permission_classes, authentication_classes
 from rest_framework.response import Response
@@ -22,18 +22,13 @@ class ProductoViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         try:
-            # Obtener el archivo de imagen
-            imagen_file = request.FILES.get('imagen')
-            
-            # Convertir a base64 si existe la imagen
-            imagen_base64 = None
-            if imagen_file:
-                imagen_data = imagen_file.read()
-                imagen_base64 = base64.b64encode(imagen_data).decode('utf-8')
-            
             # Crear copia mutable de los datos
             data = request.data.copy()
-            data['image'] = imagen_base64
+            
+            if 'imagen' in request.FILES:
+                imagen_file = request.FILES['imagen']
+                imagen_data = imagen_file.read()
+                data['image'] = base64.b64encode(imagen_data).decode('utf-8')
             
             serializer = self.get_serializer(data=data)
             serializer.is_valid(raise_exception=True)
@@ -52,13 +47,15 @@ class ProductoViewSet(viewsets.ModelViewSet):
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
         
-        # Manejar la imagen en Base64
-        imagen_file = request.FILES.get('imagen')
-        if imagen_file:
-            imagen_data = imagen_file.read()
-            request.data['image'] = base64.b64encode(imagen_data).decode('utf-8')
+        # Crear copia mutable de los datos
+        data = request.data.copy()
         
-        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        if 'imagen' in request.FILES:
+            imagen_file = request.FILES['imagen']
+            imagen_data = imagen_file.read()
+            data['image'] = base64.b64encode(imagen_data).decode('utf-8')
+        
+        serializer = self.get_serializer(instance, data=data, partial=partial)
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
         
@@ -69,18 +66,15 @@ class ProductoViewSet(viewsets.ModelViewSet):
         try:
             producto = get_object_or_404(Producto, id=pk)
 
-            # Validar que la cantidad sea un número válido
             if cantidad is None or not cantidad.isdigit():
                 return Response({'error': 'Cantidad inválida.'}, status=status.HTTP_400_BAD_REQUEST)
 
             cantidad = int(cantidad)
             nuevo_stock = producto.cantidad_en_stock - cantidad
 
-            # Validar que el stock no sea negativo
             if nuevo_stock < 0:
                 return Response({'error': 'La cantidad excede el stock disponible.'}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Actualizar el stock
             producto.cantidad_en_stock = nuevo_stock
             producto.save()
 
@@ -100,18 +94,15 @@ class ProductoViewSet(viewsets.ModelViewSet):
         try:
             producto = get_object_or_404(Producto, id=pk)
 
-            # Validar que la cantidad sea un número válido
             if cantidad is None or not cantidad.lstrip('-').isdigit():
                 return Response({'error': 'Cantidad inválida.'}, status=status.HTTP_400_BAD_REQUEST)
 
             cantidad = int(cantidad)
             nuevo_stock = producto.cantidad_en_stock + cantidad
 
-            # Validar que el stock no sea negativo
             if nuevo_stock < 0:
                 return Response({'error': 'La cantidad excede el stock disponible.'}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Actualizar el stock
             producto.cantidad_en_stock = nuevo_stock
             producto.save()
 
@@ -133,28 +124,27 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     @api_view(['POST'])
     @permission_classes([AllowAny])
     def login(request):
-        #Esto nos ayuda a verifcar si el usuario existe para asi proseguir
-        user = get_object_or_404(Usuario,email=request.data['email'])
+        user = get_object_or_404(Usuario, email=request.data['email'])
 
         if not user.check_password(request.data['password']):
-            return Response({"error":"Contraseña Invalida"},status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "Contraseña Invalida"}, status=status.HTTP_400_BAD_REQUEST)
 
-        #Si la contraseña es correcta lo siguente:
-        #el created es para confirmar que el token se creo
-        token,created = Token.objects.get_or_create(user=user)  
-
+        token, created = Token.objects.get_or_create(user=user)  
         serializer = UsuarioSerializer(instance=user)  
 
-        return Response({"token":token.key, "user":serializer.data},status=status.HTTP_200_OK)
+        return Response({"token": token.key, "user": serializer.data}, status=status.HTTP_200_OK)
  
     @api_view(['POST'])
     @permission_classes([AllowAny])
     def register(request):
         try:
-            serializer = UsuarioSerializer(data=request.data)
+            # Crear copia mutable de los datos
+            data = request.data.copy()
+            
+            serializer = UsuarioSerializer(data=data)
             if serializer.is_valid():
                 user = serializer.save()
-                user.set_password(request.data.get('password'))
+                user.set_password(data.get('password'))
                 user.save()
                 
                 token = Token.objects.create(user=user)
@@ -175,12 +165,14 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     def profile(request):
         try:
             user = request.user
-            serializer = UsuarioSerializer(user, data=request.data, partial=True)
+            # Crear copia mutable de los datos
+            data = request.data.copy()
+            
+            serializer = UsuarioSerializer(user, data=data, partial=True)
             
             if serializer.is_valid():
-                # Si se proporciona una nueva contraseña, actualizarla
-                if 'password' in request.data:
-                    user.set_password(request.data['password'])
+                if 'password' in data:
+                    user.set_password(data['password'])
                 
                 serializer.save()
                 return Response({
@@ -206,11 +198,10 @@ class PedidoViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         try:
-            # Obtener los datos del request
-            data = request.data
-            productos_data = data.pop('productos', [])  # Lista de productos a comprar
+            # Crear copia mutable de los datos
+            data = request.data.copy()
+            productos_data = data.pop('productos', [])
             
-            # Crear el pedido base
             pedido = Pedido.objects.create(
                 usuario_id=data.get('usuario'),
                 company=data.get('company'),
@@ -225,30 +216,25 @@ class PedidoViewSet(viewsets.ModelViewSet):
                 desc_adicional=data.get('desc_adicional')
             )
 
-            # Procesar cada producto en el pedido
             for producto_data in productos_data:
                 producto = get_object_or_404(Producto, id=producto_data['id'])
                 cantidad = producto_data['cantidad']
 
-                # Validar stock disponible
                 if producto.cantidad_en_stock < cantidad:
-                    pedido.delete()  # Eliminar el pedido si no hay stock
+                    pedido.delete()
                     return Response({
                         'error': f'No hay suficiente stock disponible para {producto.nombre}'
                     }, status=status.HTTP_400_BAD_REQUEST)
 
-                # Crear el detalle del pedido
                 PedidoDetalle.objects.create(
                     pedido=pedido,
                     producto=producto,
                     cantidad_prod=cantidad
                 )
 
-                # Actualizar stock del producto
                 producto.cantidad_en_stock -= cantidad
                 producto.save()
 
-            # Serializar y retornar respuesta
             serializer = self.get_serializer(pedido)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
             
@@ -259,7 +245,6 @@ class PedidoViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['get'])
     def detalles(self, request, pk=None):
-        """Obtener los detalles de un pedido específico"""
         pedido = self.get_object()
         detalles = pedido.detalles.all()
         serializer = PedidoDetalleSerializer(detalles, many=True)
@@ -267,7 +252,6 @@ class PedidoViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['put'])
     def actualizar_estado(self, request, pk=None):
-        """Actualizar el estado de un pedido"""
         pedido = self.get_object()
         nuevo_estado = request.data.get('estado_compra')
         
@@ -282,31 +266,25 @@ class PedidoViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(pedido)
         return Response(serializer.data)
 
-    
-#movimientos
-
-
 class RegistrarMovimientoView(APIView):
     def post(self, request):
         try:
-            data = request.data
-            admin_user = Usuario.objects.get(id=1)  # Usuario admin
+            # Crear copia mutable de los datos
+            data = request.data.copy()
+            admin_user = Usuario.objects.get(id=1)
             
-            # Validación básica
             required_fields = ['producto_id', 'cantidad', 'tipo_salida', 'compania_destino']
             if not all(field in data for field in required_fields):
                 return Response({'error': 'Faltan campos requeridos'}, status=status.HTTP_400_BAD_REQUEST)
             
             producto = Producto.objects.get(id=data['producto_id'])
             
-            # Verificar stock
             if producto.cantidad_en_stock < data['cantidad']:
                 return Response(
                     {'error': f'Stock insuficiente. Disponible: {producto.cantidad_en_stock}'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
-            # Crear el pedido de movimiento interno
             pedido = Pedido.objects.create(
                 usuario=admin_user,
                 company=data['compania_destino'],
@@ -320,10 +298,9 @@ class RegistrarMovimientoView(APIView):
                 estado_compra='Entregado',
                 desc_adicional=f"{data['tipo_salida']} - {data.get('descripcion', '')}",
                 fecha_entrega=timezone.now(),
-                es_movimiento_interno=True  # Marcar como movimiento interno
+                es_movimiento_interno=True
             )
             
-            # Crear detalle del pedido con valores en 0.00 para movimientos internos
             PedidoDetalle.objects.create(
                 pedido=pedido,
                 producto=producto,
@@ -334,7 +311,6 @@ class RegistrarMovimientoView(APIView):
                 total=0.00
             )
             
-            # Actualizar stock
             producto.cantidad_en_stock -= data['cantidad']
             producto.save()
             
