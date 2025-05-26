@@ -213,7 +213,8 @@ class PedidoViewSet(viewsets.ModelViewSet):
                 correo=data.get('correo'),
                 telefono=data.get('telefono'),
                 estado_compra='Pagado',
-                desc_adicional=data.get('desc_adicional')
+                desc_adicional=data.get('desc_adicional'),
+                es_movimiento_interno=False  # Explícitamente marcamos como pedido normal
             )
 
             for producto_data in productos_data:
@@ -226,6 +227,7 @@ class PedidoViewSet(viewsets.ModelViewSet):
                         'error': f'No hay suficiente stock disponible para {producto.nombre}'
                     }, status=status.HTTP_400_BAD_REQUEST)
 
+                # Crear el detalle del pedido (los cálculos se harán automáticamente en el modelo)
                 PedidoDetalle.objects.create(
                     pedido=pedido,
                     producto=producto,
@@ -235,8 +237,24 @@ class PedidoViewSet(viewsets.ModelViewSet):
                 producto.cantidad_en_stock -= cantidad
                 producto.save()
 
+            # Obtener los detalles actualizados para la respuesta
+            detalles = pedido.detalles.all()
+            detalles_data = []
+            for detalle in detalles:
+                detalles_data.append({
+                    'producto': detalle.producto.nombre,
+                    'cantidad': detalle.cantidad_prod,
+                    'subtotal': float(detalle.subtotal),
+                    'isv': float(detalle.isv),
+                    'envio': float(detalle.envio),
+                    'total': float(detalle.total)
+                })
+
             serializer = self.get_serializer(pedido)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            response_data = serializer.data
+            response_data['detalles'] = detalles_data
+
+            return Response(response_data, status=status.HTTP_201_CREATED)
             
         except Exception as e:
             return Response({
