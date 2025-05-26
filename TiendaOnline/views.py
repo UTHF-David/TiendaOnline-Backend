@@ -13,6 +13,7 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
 import base64
+from decimal import Decimal
 
 
 class ProductoViewSet(viewsets.ModelViewSet):
@@ -200,11 +201,11 @@ class PedidoViewSet(viewsets.ModelViewSet):
         try:
             # Crear copia mutable de los datos
             data = request.data.copy()
-            productos_data = data.pop('productos', [])
             
+            # Crear el pedido
             pedido = Pedido.objects.create(
                 usuario_id=data.get('usuario_id'),
-                company=data.get('company'),
+                company=data.get('compañia'),
                 direccion=data.get('direccion'),
                 pais=data.get('pais'),
                 estado_pais=data.get('estado_pais'),
@@ -214,46 +215,45 @@ class PedidoViewSet(viewsets.ModelViewSet):
                 telefono=data.get('telefono'),
                 estado_compra='Pagado',
                 desc_adicional=data.get('desc_adicional'),
-                es_movimiento_interno=False  # Confirmamos que no es una salida de stock
+                es_movimiento_interno=False
             )
 
-            for producto_data in productos_data:
-                producto = get_object_or_404(Producto, id=producto_data['id'])
-                cantidad = producto_data['cantidad']
+            # Crear el detalle del pedido
+            producto = get_object_or_404(Producto, id=data.get('producto'))
+            cantidad = int(data.get('cantidad_prod', 1))
 
-                if producto.cantidad_en_stock < cantidad:
-                    pedido.delete()
-                    return Response({
-                        'error': f'No hay suficiente stock disponible para {producto.nombre}'
-                    }, status=status.HTTP_400_BAD_REQUEST)
+            if producto.cantidad_en_stock < cantidad:
+                pedido.delete()
+                return Response({
+                    'error': f'No hay suficiente stock disponible para {producto.nombre}'
+                }, status=status.HTTP_400_BAD_REQUEST)
 
-                # Crear el detalle del pedido con los valores calculados
-                detalle = PedidoDetalle.objects.create(
-                    pedido=pedido,
-                    producto=producto,
-                    cantidad_prod=cantidad
-                )
+            # Crear el detalle del pedido con los valores proporcionados
+            detalle = PedidoDetalle.objects.create(
+                pedido=pedido,
+                producto=producto,
+                cantidad_prod=cantidad,
+                subtotal=Decimal(data.get('subtotal', 0)),
+                isv=Decimal(data.get('isv', 0)),
+                envio=Decimal(data.get('envio', 0)),
+                total=Decimal(data.get('total', 0))
+            )
 
-                # Actualizar el stock del producto
-                producto.cantidad_en_stock -= cantidad
-                producto.save()
+            # Actualizar el stock del producto
+            producto.cantidad_en_stock -= cantidad
+            producto.save()
 
-            # Obtener los detalles actualizados para la respuesta
-            detalles = pedido.detalles.all()
-            detalles_data = []
-            for detalle in detalles:
-                detalles_data.append({
-                    'producto': detalle.producto.nombre,
-                    'cantidad': detalle.cantidad_prod,
-                    'subtotal': float(detalle.subtotal),
-                    'isv': float(detalle.isv),
-                    'envio': float(detalle.envio),
-                    'total': float(detalle.total)
-                })
-
+            # Preparar la respuesta
             serializer = self.get_serializer(pedido)
             response_data = serializer.data
-            response_data['detalles'] = detalles_data
+            response_data['detalle'] = {
+                'producto': producto.nombre,
+                'cantidad': cantidad,
+                'subtotal': float(detalle.subtotal),
+                'isv': float(detalle.isv),
+                'envio': float(detalle.envio),
+                'total': float(detalle.total)
+            }
 
             return Response(response_data, status=status.HTTP_201_CREATED)
             
