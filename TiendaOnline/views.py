@@ -228,31 +228,37 @@ class PedidoViewSet(viewsets.ModelViewSet):
                     'error': f'No hay suficiente stock disponible para {producto.nombre}'
                 }, status=status.HTTP_400_BAD_REQUEST)
 
-            # Crear el detalle del pedido con los valores proporcionados
+            # Obtener los valores monetarios del frontend
+            subtotal = Decimal(str(data.get('subtotal', '0.00')))
+            isv = Decimal(str(data.get('isv', '0.00')))
+            envio = Decimal(str(data.get('envio', '0.00')))
+            total = Decimal(str(data.get('total', '0.00')))
+
+            # Crear el detalle del pedido con los valores exactos del frontend
             detalle = PedidoDetalle.objects.create(
                 pedido=pedido,
                 producto=producto,
                 cantidad_prod=cantidad,
-                subtotal=Decimal(data.get('subtotal', 0)),
-                isv=Decimal(data.get('isv', 0)),
-                envio=Decimal(data.get('envio', 0)),
-                total=Decimal(data.get('total', 0))
+                subtotal=subtotal,
+                isv=isv,
+                envio=envio,
+                total=total
             )
 
             # Actualizar el stock del producto
             producto.cantidad_en_stock -= cantidad
             producto.save()
 
-            # Preparar la respuesta
+            # Preparar la respuesta con los valores exactos
             serializer = self.get_serializer(pedido)
             response_data = serializer.data
             response_data['detalle'] = {
                 'producto': producto.nombre,
                 'cantidad': cantidad,
-                'subtotal': float(detalle.subtotal),
-                'isv': float(detalle.isv),
-                'envio': float(detalle.envio),
-                'total': float(detalle.total)
+                'subtotal': float(subtotal),
+                'isv': float(isv),
+                'envio': float(envio),
+                'total': float(total)
             }
 
             return Response(response_data, status=status.HTTP_201_CREATED)
