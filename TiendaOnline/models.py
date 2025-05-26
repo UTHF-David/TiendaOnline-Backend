@@ -374,19 +374,26 @@ class PedidoDetalle(models.Model):
         """Calcula automáticamente los valores antes de guardar"""
         from decimal import Decimal  # Asegúrate de importar Decimal
         
-        # Convierte el 0.15 a Decimal antes de multiplicar
-        self.subtotal = self.producto.precio * Decimal(str(self.cantidad_prod))
-        self.isv = self.subtotal * Decimal('0.15')  # Usa string para precisión exacta
-        
-        # Costo de envío (asegúrate que sea Decimal)
-        costos_envio = {
-            'Honduras': Decimal('5.00'),
-            'Guatemala': Decimal('7.00'),
-            # Agrega más países según necesites
-        }
-        
-        self.envio = costos_envio.get(self.pedido.pais, Decimal('0')) if self.pedido.pais else Decimal('0')
-        self.total = self.subtotal + self.isv + self.envio
+        # Si es un movimiento interno, todos los valores monetarios son 0.00
+        if self.pedido.es_movimiento_interno:
+            self.subtotal = Decimal('0.00')
+            self.isv = Decimal('0.00')
+            self.envio = Decimal('0.00')
+            self.total = Decimal('0.00')
+        else:
+            # Cálculo normal para pedidos regulares
+            self.subtotal = self.producto.precio * Decimal(str(self.cantidad_prod))
+            self.isv = self.subtotal * Decimal('0.15')  # Usa string para precisión exacta
+            
+            # Costo de envío (asegúrate que sea Decimal)
+            costos_envio = {
+                'Honduras': Decimal('5.00'),
+                'Guatemala': Decimal('7.00'),
+                # Agrega más países según necesites
+            }
+            
+            self.envio = costos_envio.get(self.pedido.pais, Decimal('0')) if self.pedido.pais else Decimal('0')
+            self.total = self.subtotal + self.isv + self.envio
         
         super().save(*args, **kwargs)
     
