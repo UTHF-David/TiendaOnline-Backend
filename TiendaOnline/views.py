@@ -319,18 +319,19 @@ class RegistrarMovimientoView(APIView):
                 telefono=admin_user.telefono,
                 estado_compra='Entregado',
                 desc_adicional=f"{data['tipo_salida']} - {data.get('descripcion', '')}",
-                fecha_entrega=timezone.now()
+                fecha_entrega=timezone.now(),
+                es_movimiento_interno=True  # Marcar como movimiento interno
             )
             
-            # Crear detalle del pedido (con valores en 0)
+            # Crear detalle del pedido con valores en 0.00 para movimientos internos
             PedidoDetalle.objects.create(
                 pedido=pedido,
                 producto=producto,
                 cantidad_prod=data['cantidad'],
-                subtotal=0,
-                isv=0,
-                envio=0,
-                total=0
+                subtotal=0.00,
+                isv=0.00,
+                envio=0.00,
+                total=0.00
             )
             
             # Actualizar stock
@@ -340,7 +341,11 @@ class RegistrarMovimientoView(APIView):
             return Response({
                 'success': True,
                 'pedido_id': pedido.id_pedido,
-                'stock_actual': producto.cantidad_en_stock
+                'stock_actual': producto.cantidad_en_stock,
+                'subtotal': 0.00,
+                'isv': 0.00,
+                'envio': 0.00,
+                'total': 0.00
             }, status=status.HTTP_201_CREATED)
             
         except Producto.DoesNotExist:
