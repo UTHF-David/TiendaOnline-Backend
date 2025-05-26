@@ -206,7 +206,7 @@ class PedidoViewSet(viewsets.ModelViewSet):
                 usuario_id=data.get('usuario'),
                 company=data.get('company'),
                 direccion=data.get('direccion'),
-                pais_id=data.get('pais'),
+                pais=data.get('pais'),
                 estado_pais=data.get('estado_pais'),
                 ciudad=data.get('ciudad'),
                 zip=data.get('zip'),
