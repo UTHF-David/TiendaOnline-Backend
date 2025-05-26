@@ -214,7 +214,7 @@ class PedidoViewSet(viewsets.ModelViewSet):
                 telefono=data.get('telefono'),
                 estado_compra='Pagado',
                 desc_adicional=data.get('desc_adicional'),
-                es_movimiento_interno=False  # Explícitamente marcamos como pedido normal
+                es_movimiento_interno=False  # Confirmamos que no es una salida de stock
             )
 
             for producto_data in productos_data:
@@ -230,8 +230,8 @@ class PedidoViewSet(viewsets.ModelViewSet):
                 # Crear el detalle del pedido (los cálculos se harán automáticamente en el modelo)
                 PedidoDetalle.objects.create(
                     pedido=pedido,
-                    producto=producto,
-                    cantidad_prod=cantidad
+                    producto=producto,                    
+                    cantidad_prod=data['cantidad'],
                 )
 
                 producto.cantidad_en_stock -= cantidad
