@@ -227,13 +227,14 @@ class PedidoViewSet(viewsets.ModelViewSet):
                         'error': f'No hay suficiente stock disponible para {producto.nombre}'
                     }, status=status.HTTP_400_BAD_REQUEST)
 
-                # Crear el detalle del pedido (los cálculos se harán automáticamente en el modelo)
-                PedidoDetalle.objects.create(
+                # Crear el detalle del pedido con los valores calculados
+                detalle = PedidoDetalle.objects.create(
                     pedido=pedido,
-                    producto=producto,                    
-                    cantidad_prod=data['cantidad'],
+                    producto=producto,
+                    cantidad_prod=cantidad
                 )
 
+                # Actualizar el stock del producto
                 producto.cantidad_en_stock -= cantidad
                 producto.save()
 
