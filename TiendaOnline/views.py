@@ -203,7 +203,7 @@ class PedidoViewSet(viewsets.ModelViewSet):
             productos_data = data.pop('productos', [])
             
             pedido = Pedido.objects.create(
-                usuario_id=data.get('usuario'),
+                usuario_id=data.get('usuario_id'),
                 company=data.get('company'),
                 direccion=data.get('direccion'),
                 pais=data.get('pais'),
