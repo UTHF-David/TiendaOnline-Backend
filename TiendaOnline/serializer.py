@@ -94,7 +94,7 @@ class PedidoSerializer(serializers.ModelSerializer):
         fields = ['id_pedido', 'usuario', 'usuario_nombre', 'company', 'direccion',
                  'pais', 'pais_nombre', 'estado_pais', 'ciudad', 'zip', 'correo',
                  'telefono', 'estado_compra', 'desc_adicional', 'fecha_compra',
-                 'fecha_entrega', 'detalles', 'total_pedido']
+                 'fecha_entrega', 'detalles', 'total_pedido','es_movimiento_interno']
         read_only_fields = ['id_pedido', 'fecha_compra', 'total_pedido', 'usuario_nombre', 'pais_nombre','es_movimiento_interno'] # usuario_nombre y pais_nombre son read_only
 
 class PedidoCreateSerializer(serializers.ModelSerializer):
