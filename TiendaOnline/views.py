@@ -199,7 +199,9 @@ class PedidoViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         try:
+            # Crear copia mutable de los datos
             data = request.data.copy()
+            print("Data PedidoViewSet: ",data)
             
             # Crear el pedido
             pedido = Pedido.objects.create(
@@ -230,7 +232,7 @@ class PedidoViewSet(viewsets.ModelViewSet):
             # Obtener los valores monetarios del frontend
             subtotal = Decimal(str(data.get('subtotal', '0.00')))
             isv = Decimal(str(data.get('isv', '0.00')))
-            envio = Decimal(str(data.get('envio', '0.00')))  # Asegurarse de obtener el valor de envío
+            envio = Decimal(str(data.get('envio', '0.00')))  # Este valor ya viene dividido por la cantidad de productos
             total = Decimal(str(data.get('total', '0.00')))
 
             # Crear el detalle del pedido con los valores exactos del frontend
@@ -240,7 +242,7 @@ class PedidoViewSet(viewsets.ModelViewSet):
                 cantidad_prod=cantidad,
                 subtotal=subtotal,
                 isv=isv,
-                envio=envio,  # Usar el valor de envío proporcionado
+                envio=envio,  # Usamos el valor de envío que ya viene dividido
                 total=total
             )
 
@@ -248,7 +250,7 @@ class PedidoViewSet(viewsets.ModelViewSet):
             producto.cantidad_en_stock -= cantidad
             producto.save()
 
-            # Preparar la respuesta
+            # Preparar la respuesta con los valores exactos
             serializer = self.get_serializer(pedido)
             response_data = serializer.data
             response_data['detalle'] = {
@@ -256,7 +258,7 @@ class PedidoViewSet(viewsets.ModelViewSet):
                 'cantidad': cantidad,
                 'subtotal': float(subtotal),
                 'isv': float(isv),
-                'envio': float(envio),  # Incluir envío en la respuesta
+                'envio': float(envio),
                 'total': float(total)
             }
 

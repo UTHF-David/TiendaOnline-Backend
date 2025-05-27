@@ -74,7 +74,7 @@ class PedidoDetalleSerializer(serializers.ModelSerializer):
         fields = ['id', 'pedido', 'producto', 'producto_nombre', 'producto_precio',
                  'cantidad_prod', 'subtotal', 'isv', 'envio', 'total']
         # Se elimina 'envio' de read_only_fields para permitir que se escriba
-        read_only_fields = ['id', 'subtotal', 'isv', 'total']
+        read_only_fields = ['id', 'subtotal', 'isv', 'envio', 'total']
 
 
 class PedidoSerializer(serializers.ModelSerializer):
