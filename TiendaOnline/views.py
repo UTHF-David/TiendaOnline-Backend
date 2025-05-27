@@ -231,7 +231,7 @@ class PedidoViewSet(viewsets.ModelViewSet):
             # Obtener los valores monetarios del frontend
             subtotal = Decimal(str(data.get('subtotal', '0.00')))
             isv = Decimal(str(data.get('isv', '0.00')))
-            envio = Decimal(str(data.get('envio', '0.00')))
+            envio = Decimal(str(data.get('envio', '0.00')))  # Este valor ya viene dividido por la cantidad de productos
             total = Decimal(str(data.get('total', '0.00')))
 
             # Crear el detalle del pedido con los valores exactos del frontend
@@ -241,7 +241,7 @@ class PedidoViewSet(viewsets.ModelViewSet):
                 cantidad_prod=cantidad,
                 subtotal=subtotal,
                 isv=isv,
-                envio=envio,
+                envio=envio,  # Usamos el valor de envío que ya viene dividido
                 total=total
             )
 
