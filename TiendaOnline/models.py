@@ -372,7 +372,7 @@ class PedidoDetalle(models.Model):
     
     def save(self, *args, **kwargs):
         """Calcula automáticamente los valores antes de guardar"""
-        from decimal import Decimal  # Asegúrate de importar Decimal
+        from decimal import Decimal
         
         # Si es un movimiento interno, todos los valores monetarios son 0.00
         if self.pedido.es_movimiento_interno:
@@ -381,18 +381,20 @@ class PedidoDetalle(models.Model):
             self.envio = Decimal('0.00')
             self.total = Decimal('0.00')
         else:
-            # Cálculo normal para pedidos regulares
+            # Cálculos normales para pedidos regulares
             self.subtotal = self.producto.precio * Decimal(str(self.cantidad_prod))
-            self.isv = self.subtotal * Decimal('0.15')  # Usa string para precisión exacta
+            self.isv = self.subtotal * Decimal('0.15')
             
-            # Costo de envío (asegúrate que sea Decimal)
-            costos_envio = {
-                'Honduras': Decimal('5.00'),
-                'Guatemala': Decimal('7.00'),
-                # Agrega más países según necesites
-            }
+            # Mantener el valor de envío que viene del frontend si ya existe
+            if not hasattr(self, 'envio') or self.envio is None:
+                # Solo calcular envío si no se proporcionó uno
+                costos_envio = {
+                    'Honduras': Decimal('5.00'),
+                    'Guatemala': Decimal('7.00'),
+                    # Agrega más países según necesites
+                }
+                self.envio = costos_envio.get(self.pedido.pais, Decimal('0')) if self.pedido.pais else Decimal('0')
             
-            self.envio = costos_envio.get(self.pedido.pais, Decimal('0')) if self.pedido.pais else Decimal('0')
             self.total = self.subtotal + self.isv + self.envio
         
         super().save(*args, **kwargs)
