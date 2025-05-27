@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from .models import Producto, Pedido, PedidoDetalle, Usuario
 from django.contrib.auth.models import User
+from decimal import Decimal # Importar Decimal si se usa en algún serializer (aunque en PedidoDetalle.save es donde se usa principalmente)
 
 
 
@@ -70,15 +71,22 @@ class PedidoDetalleSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = PedidoDetalle
-        fields = ['id', 'producto', 'producto_nombre', 'producto_precio', 
+        fields = ['id', 'pedido', 'producto', 'producto_nombre', 'producto_precio',
                  'cantidad_prod', 'subtotal', 'isv', 'envio', 'total']
-        read_only_fields = ['subtotal', 'isv', 'envio', 'total']
+        # Se elimina 'envio' de read_only_fields para permitir que se escriba
+        read_only_fields = ['id', 'subtotal', 'isv', 'total']
 
 
 class PedidoSerializer(serializers.ModelSerializer):
     detalles = PedidoDetalleSerializer(many=True, read_only=True)
     usuario_nombre = serializers.CharField(source='usuario.nombre_cliente', read_only=True)
-    pais_nombre = serializers.CharField(source='pais.pais', read_only=True)
+    # pais_nombre: si pais en modelo Pedido es CharField, no puedes usar source='pais.pais'
+    # Si pais en modelo Pedido fuera ForeignKey a un modelo Pais con campo 'pais', esto estaría bien
+    # Si es CharField y guarda el ID, quizás necesites un SerializerMethodField para mostrar el nombre
+    # Si es CharField y guarda el nombre, source='pais' podría funcionar si el campo es solo 'pais'
+    # Por ahora, dejo pais_nombre como read_only=True y asumo que el frontend maneja la visualización del nombre.
+    pais_nombre = serializers.CharField(source='pais', read_only=True) # Ajustado a source='pais' si pais es CharField
+
     total_pedido = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
 
     class Meta:
@@ -87,22 +95,26 @@ class PedidoSerializer(serializers.ModelSerializer):
                  'pais', 'pais_nombre', 'estado_pais', 'ciudad', 'zip', 'correo',
                  'telefono', 'estado_compra', 'desc_adicional', 'fecha_compra',
                  'fecha_entrega', 'detalles', 'total_pedido']
-        read_only_fields = ['id_pedido', 'fecha_compra', 'total_pedido']
-
+        read_only_fields = ['id_pedido', 'fecha_compra', 'total_pedido', 'usuario_nombre', 'pais_nombre'] # usuario_nombre y pais_nombre son read_only
 
 class PedidoCreateSerializer(serializers.ModelSerializer):
     productos = serializers.ListField(
         child=serializers.DictField(),
         write_only=True
     )
+    # Asegúrate de que 'pais' aquí corresponda al tipo de datos que esperas recibir
+    # Si esperas el ID numérico del frontend y el modelo Pedido.pais es CharField,
+    # quizás necesites validar y guardar el ID como cadena o convertirlo a nombre si lo prefieres.
+    # Por simplicidad, asumimos que recibes algo que puedes asignar directamente al CharField 'pais'.
+
 
     class Meta:
         model = Pedido
         fields = ['usuario', 'company', 'direccion', 'pais', 'estado_pais',
-                 'ciudad', 'zip', 'correo', 'telefono', 'desc_adicional', 'productos']
-
+                 'ciudad', 'zip', 'correo', 'telefono', 'desc_adicional', 'productos', 'estado_compra'] # Incluir estado_compra si el backend lo establece o lo recibe
 
 class UsersSerializer(serializers.ModelSerializer):
     class Meta:
-        model = User
-        fields = ['username', 'first_name', 'middle_name', 'last_name', 'email']
+        model = User # O Usuario si este serializer es para el modelo Usuario principal
+        fields = ['username', 'first_name', 'last_name', 'email'] # Middle_name no está en AbstractUser por defecto
+
