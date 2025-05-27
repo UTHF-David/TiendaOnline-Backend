@@ -215,7 +215,7 @@ class PedidoViewSet(viewsets.ModelViewSet):
                 telefono=data.get('telefono'),
                 estado_compra='Pagado',
                 desc_adicional=data.get('desc_adicional'),
-                es_movimiento_interno=data.get('es_movimiento_interno', False)
+                es_movimiento_interno=False
             )
 
             # Crear el detalle del pedido
