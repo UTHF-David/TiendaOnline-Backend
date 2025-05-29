@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Producto, Pedido, PedidoDetalle, Usuario
+from .models import Producto, Pedido, PedidoDetalle, Usuario, CarritoTemp
 from django.contrib.auth.models import User
 from decimal import Decimal # Importar Decimal si se usa en algún serializer (aunque en PedidoDetalle.save es donde se usa principalmente)
 
@@ -117,4 +117,24 @@ class UsersSerializer(serializers.ModelSerializer):
     class Meta:
         model = User # O Usuario si este serializer es para el modelo Usuario principal
         fields = ['username', 'first_name', 'last_name', 'email'] # Middle_name no está en AbstractUser por defecto
+
+class CarritoTempSerializer(serializers.ModelSerializer):
+    producto_nombre = serializers.CharField(source='producto.nombre', read_only=True)
+    producto_precio = serializers.DecimalField(source='producto.precio', max_digits=10, decimal_places=2, read_only=True)
+    stock_disponible = serializers.IntegerField(source='producto.cantidad_en_stock', read_only=True)
+    usuario_nombre = serializers.CharField(source='usuario.nombre_cliente', read_only=True)
+
+    class Meta:
+        model = CarritoTemp
+        fields = ['id', 'usuario', 'usuario_nombre', 'producto', 'producto_nombre', 
+                  'cantidad_prod', 'cantidad_temp', 'stock_disponible']
+        read_only_fields = ['id', 'usuario_nombre', 'producto_nombre', 'stock_disponible']
+
+    def validate(self, data):
+        # Validar que la cantidad no exceda el stock disponible
+        if data.get('cantidad_prod', 0) > data['producto'].cantidad_en_stock:
+            raise serializers.ValidationError(
+                f'La cantidad excede el stock disponible ({data["producto"].cantidad_en_stock} unidades)'
+            )
+        return data
 

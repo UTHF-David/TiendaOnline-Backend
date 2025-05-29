@@ -401,3 +401,48 @@ class PedidoDetalle(models.Model):
     
     def __str__(self):
         return f"Detalle #{self.id} - {self.cantidad_prod}x {self.producto.nombre}"
+    
+    ##Nuevo manejo de stock con tabla de registros temporal
+
+class CarritoTemp(models.Model):
+    """Modelo para el carrito temporal de compras"""
+    id = models.AutoField(primary_key=True)
+    usuario = models.ForeignKey(
+        Usuario,
+        on_delete=models.CASCADE,
+        related_name='carritos_temp',
+        verbose_name='Usuario',
+        null=False
+    )
+    producto = models.ForeignKey(
+        Producto,
+        on_delete=models.CASCADE,
+        related_name='carritos_temp',
+        verbose_name='Producto',
+        null=False
+    )
+    cantidad_prod = models.PositiveIntegerField(
+        verbose_name='Cantidad',
+        validators=[MinValueValidator(1)],
+        null=False
+    )
+    cantidad_temp = models.PositiveIntegerField(
+        verbose_name='Cantidad Temporal',
+        validators=[MinValueValidator(1)],
+        null=False
+    )
+    
+
+    class Meta:
+        verbose_name = 'Carrito Temporal'
+        verbose_name_plural = 'Carritos Temporales'
+        unique_together = ['usuario', 'producto']  # Evita duplicados de productos por usuario
+
+    def __str__(self):
+        return f"Carrito de {self.usuario.nombre_cliente} - {self.producto.nombre}"
+
+    def save(self, *args, **kwargs):
+        # Validar que no exceda el stock disponible
+        if self.cantidad_prod > self.producto.cantidad_en_stock:
+            raise ValidationError('La cantidad excede el stock disponible')
+        super().save(*args, **kwargs)
