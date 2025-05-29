@@ -1,6 +1,7 @@
 from django.urls import path, include
 from django.contrib import admin
-from .views import ProductoViewSet, PedidoViewSet, UsuarioViewSet, PedidoDetalleViewSet,RegistrarMovimientoView
+from .views import ProductoViewSet, PedidoViewSet, UsuarioViewSet, PedidoDetalleViewSet
+from .views import RegistrarMovimientoView, CarritoTempViewSet
 from rest_framework.routers import DefaultRouter
 #from rest_framework_simplejwt.views import TokenObtainPairView,TokenRefreshView
 
@@ -11,6 +12,8 @@ router.register(r'productos', ProductoViewSet)
 router.register(r'pedidos', PedidoViewSet)
 router.register(r'usuarios', UsuarioViewSet)
 router.register(r'detalles-pedido', PedidoDetalleViewSet)
+router.register(r'carrito', CarritoTempViewSet, basename='carrito')
+
 
 # r'tareas' es la ruta de la api
 # TareasView es la vista de las tareas
