@@ -362,28 +362,44 @@ class CarritoTempViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Retorna solo los items del carrito del usuario actual"""
+        # Primero liberamos stock expirado
+        CarritoTemp.liberar_stock_expirado()
+        
+        # Verificamos stock disponible para el usuario actual
+        productos_sin_stock = CarritoTemp.verificar_stock_disponible(self.request.user)
+        
+        if productos_sin_stock:
+            # Podrías enviar una notificación al frontend si lo deseas
+            pass
+            
         return CarritoTemp.objects.filter(usuario=self.request.user)
 
     def perform_create(self, serializer):
         """Asigna automáticamente el usuario actual al crear un item"""
+        producto = serializer.validated_data['producto']
+        cantidad = serializer.validated_data['cantidad_prod']
+        
+        # Verificar si ya existe en el carrito
+        item_existente = CarritoTemp.objects.filter(
+            usuario=self.request.user,
+            producto=producto
+        ).first()
+        
+        if item_existente:
+            # Actualizar cantidad si ya existe
+            nueva_cantidad = item_existente.cantidad_prod + cantidad
+            if nueva_cantidad > item_existente.limite_compra:
+                raise serializer.ValidationError(
+                    f'No puede comprar más de {item_existente.limite_compra} unidades de este producto'
+                )
+            
+            item_existente.cantidad_prod = nueva_cantidad
+            item_existente.cantidad_temp = nueva_cantidad
+            item_existente.save()
+            return Response(self.get_serializer(item_existente).data)
+        
+        # Crear nuevo item si no existe
         serializer.save(usuario=self.request.user)
-
-    @action(detail=False, methods=['get'])
-    def resumen(self, request):
-        """Obtiene un resumen del carrito con totales"""
-        carrito_items = self.get_queryset()
-        total_items = carrito_items.count()
-        total_cantidad = sum(item.cantidad_prod for item in carrito_items)
-        subtotal = sum(item.producto.precio * item.cantidad_prod for item in carrito_items)
-        isv = subtotal * Decimal('0.15')
-
-        return Response({
-            'total_items': total_items,
-            'total_cantidad': total_cantidad,
-            'subtotal': float(subtotal),
-            'isv': float(isv),
-            'total': float(subtotal + isv)
-        })
 
     @action(detail=True, methods=['put'])
     def actualizar_cantidad(self, request, pk=None):
@@ -398,20 +414,47 @@ class CarritoTempViewSet(viewsets.ModelViewSet):
             )
 
         nueva_cantidad = int(nueva_cantidad)
-        if nueva_cantidad > item.producto.cantidad_en_stock:
+        
+        # Validar límite de compra
+        if nueva_cantidad > item.limite_compra:
+            return Response(
+                {'error': f'No puede comprar más de {item.limite_compra} unidades de este producto'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Validar stock disponible
+        if nueva_cantidad > item.producto.cantidad_en_stock + item.cantidad_temp:
             return Response(
                 {'error': f'Stock insuficiente. Disponible: {item.producto.cantidad_en_stock}'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        # Calcular diferencia para ajustar el stock reservado
+        diferencia = nueva_cantidad - item.cantidad_prod
+        
+        # Actualizar stock reservado
+        item.producto.cantidad_en_stock -= diferencia
+        item.producto.save()
+        
+        # Actualizar cantidades en el carrito
         item.cantidad_prod = nueva_cantidad
+        item.cantidad_temp = nueva_cantidad
         item.save()
 
         serializer = self.get_serializer(item)
         return Response(serializer.data)
 
-    @action(detail=False, methods=['delete'])
-    def limpiar(self, request):
-        """Elimina todos los items del carrito del usuario"""
-        self.get_queryset().delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+    @action(detail=False, methods=['post'])
+    def verificar_stock(self, request):
+        """Verifica el stock de todos los items en el carrito"""
+        productos_sin_stock = CarritoTemp.verificar_stock_disponible(request.user)
+        
+        if productos_sin_stock:
+            return Response({
+                'message': 'Algunos productos fueron eliminados por falta de stock',
+                'productos_eliminados': productos_sin_stock
+            }, status=status.HTTP_200_OK)
+        
+        return Response({
+            'message': 'Todos los productos en tu carrito tienen stock disponible'
+        }, status=status.HTTP_200_OK)

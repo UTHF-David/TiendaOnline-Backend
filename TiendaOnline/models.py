@@ -405,7 +405,7 @@ class PedidoDetalle(models.Model):
     ##Nuevo manejo de stock con tabla de registros temporal
 
 class CarritoTemp(models.Model):
-    """Modelo para el carrito temporal de compras"""
+    """Modelo para el carrito temporal de compras con gestión de stock reservado"""
     id = models.AutoField(primary_key=True)
     usuario = models.ForeignKey(
         Usuario,
@@ -422,27 +422,102 @@ class CarritoTemp(models.Model):
         null=False
     )
     cantidad_prod = models.PositiveIntegerField(
-        verbose_name='Cantidad',
+        verbose_name='Cantidad en Carrito',
         validators=[MinValueValidator(1)],
-        null=False
+        null=False,
+        default=1
     )
     cantidad_temp = models.PositiveIntegerField(
-        verbose_name='Cantidad Temporal',
+        verbose_name='Cantidad Temporal (reservado)',
         validators=[MinValueValidator(1)],
-        null=False
+        null=False,
+        default=1
     )
-    
+    fecha_creacion = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='Fecha de creación',
+        null=True,
+        blank=True,
+
+    )
+    fecha_actualizacion = models.DateTimeField(
+        auto_now=True,
+        verbose_name='Fecha de última actualización',
+        null=True,
+        blank=True,
+    )
+    limite_compra = models.PositiveIntegerField(
+        verbose_name='Límite de compra por usuario',
+        default=10,
+        help_text='Cantidad máxima que un usuario puede comprar de este producto'
+    )
 
     class Meta:
         verbose_name = 'Carrito Temporal'
         verbose_name_plural = 'Carritos Temporales'
-        unique_together = ['usuario', 'producto']  # Evita duplicados de productos por usuario
+        unique_together = ['usuario', 'producto']
+        ordering = ['-fecha_actualizacion']
 
     def __str__(self):
-        return f"Carrito de {self.usuario.nombre_cliente} - {self.producto.nombre}"
+        return f"Carrito de {self.usuario.nombre_cliente} - {self.producto.nombre} ({self.cantidad_prod})"
 
-    def save(self, *args, **kwargs):
+    def clean(self):
+        """Validaciones adicionales"""
         # Validar que no exceda el stock disponible
         if self.cantidad_prod > self.producto.cantidad_en_stock:
             raise ValidationError('La cantidad excede el stock disponible')
+        
+        # Validar que no exceda el límite de compra
+        if self.cantidad_prod > self.limite_compra:
+            raise ValidationError(f'No puede comprar más de {self.limite_compra} unidades de este producto')
+
+    def save(self, *args, **kwargs):
+        """Lógica al guardar el item del carrito"""
+        # Si es un nuevo registro, reservar el stock temporalmente
+        if not self.pk:
+            self.cantidad_temp = self.cantidad_prod
+            self.producto.cantidad_en_stock -= self.cantidad_temp
+            self.producto.save()
+        
         super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        """Lógica al eliminar el item del carrito"""
+        # Liberar el stock reservado al eliminar
+        self.producto.cantidad_en_stock += self.cantidad_temp
+        self.producto.save()
+        super().delete(*args, **kwargs)
+
+    @classmethod
+    def liberar_stock_expirado(cls, minutos_expiracion=5):
+        """Método para liberar stock de carritos no actualizados"""
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        limite_tiempo = timezone.now() - timedelta(minutes=minutos_expiracion)
+        carritos_expirados = cls.objects.filter(fecha_actualizacion__lt=limite_tiempo)
+        
+        for carrito in carritos_expirados:
+            carrito.producto.cantidad_en_stock += carrito.cantidad_temp
+            carrito.producto.save()
+            carrito.delete()
+
+    @classmethod
+    def verificar_stock_disponible(cls, usuario):
+        """Verifica el stock disponible para los productos en el carrito del usuario"""
+        carritos = cls.objects.filter(usuario=usuario)
+        productos_sin_stock = []
+        
+        for carrito in carritos:
+            # Si no hay suficiente stock, ajustar cantidades
+            if carrito.producto.cantidad_en_stock < carrito.cantidad_prod:
+                if carrito.producto.cantidad_en_stock <= 0:
+                    productos_sin_stock.append(carrito.producto.nombre)
+                    carrito.delete()
+                else:
+                    # Ajustar a la cantidad disponible
+                    carrito.cantidad_prod = carrito.producto.cantidad_en_stock
+                    carrito.cantidad_temp = carrito.cantidad_prod
+                    carrito.save()
+        
+        return productos_sin_stock
