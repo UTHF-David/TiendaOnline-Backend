@@ -199,7 +199,7 @@ class PedidoViewSet(viewsets.ModelViewSet):
         try:
             # Crear copia mutable de los datos
             data = request.data.copy()
-            print("Data PedidoViewSet: ", data)
+            print("Data PedidoViewSet: ",data)
             
             # Crear el pedido
             pedido = Pedido.objects.create(
@@ -217,70 +217,47 @@ class PedidoViewSet(viewsets.ModelViewSet):
                 es_movimiento_interno=False
             )
 
-            # Obtener los items del carrito del usuario
-            carrito_items = CarritoTemp.objects.filter(usuario_id=data.get('usuario_id'))
-            
-            if not carrito_items.exists():
+            # Crear el detalle del pedido
+            producto = get_object_or_404(Producto, id=data.get('producto'))
+            cantidad = int(data.get('cantidad_prod', 1))
+
+            if producto.cantidad_en_stock < cantidad:
                 pedido.delete()
                 return Response({
-                    'error': 'No hay productos en el carrito'
+                    'error': f'No hay suficiente stock disponible para {producto.nombre}'
                 }, status=status.HTTP_400_BAD_REQUEST)
 
-            # Variables para el total del pedido
-            subtotal_total = Decimal('0.00')
-            isv_total = Decimal('0.00')
-            envio_total = Decimal('0.00')
-            total_total = Decimal('0.00')
+            # Obtener los valores monetarios del frontend
+            subtotal = Decimal(str(data.get('subtotal', '0.00')))
+            isv = Decimal(str(data.get('isv', '0.00')))
+            envio = Decimal(str(data.get('envio', '0.00')))  # Este valor ya viene dividido por la cantidad de productos
+            total = Decimal(str(data.get('total', '0.00')))
 
-            # Crear detalles del pedido para cada item del carrito
-            for item in carrito_items:
-                producto = item.producto
-                cantidad = item.cantidad_prod
+            # Crear el detalle del pedido con los valores exactos del frontend
+            detalle = PedidoDetalle.objects.create(
+                pedido=pedido,
+                producto=producto,
+                cantidad_prod=cantidad,
+                subtotal=subtotal,
+                isv=isv,
+                envio=envio,  # Usamos el valor de envío que ya viene dividido
+                total=total
+            )
 
-                if producto.cantidad_en_stock < cantidad:
-                    pedido.delete()
-                    return Response({
-                        'error': f'No hay suficiente stock disponible para {producto.nombre}'
-                    }, status=status.HTTP_400_BAD_REQUEST)
+            # Actualizar el stock del producto
+            producto.cantidad_en_stock -= cantidad
+            producto.save()
 
-                # Calcular valores para este producto
-                subtotal = producto.precio * cantidad
-                isv = subtotal * Decimal('0.15')
-                envio = Decimal(str(data.get('envio', '0.00'))) / carrito_items.count()  # Dividir el envío entre los productos
-                total = subtotal + isv + envio
-
-                # Acumular totales
-                subtotal_total += subtotal
-                isv_total += isv
-                envio_total += envio
-                total_total += total
-
-                # Crear el detalle del pedido
-                PedidoDetalle.objects.create(
-                    pedido=pedido,
-                    producto=producto,
-                    cantidad_prod=cantidad,
-                    subtotal=subtotal,
-                    isv=isv,
-                    envio=envio,
-                    total=total
-                )
-
-                # Actualizar el stock del producto
-                producto.cantidad_en_stock -= cantidad
-                producto.save()
-
-            # Limpiar el carrito después de crear el pedido
-            carrito_items.delete()
-
-            # Preparar la respuesta
+            # Preparar la respuesta con los valores exactos
             serializer = self.get_serializer(pedido)
             response_data = serializer.data
-            response_data['totales'] = {
-                'subtotal': float(subtotal_total),
-                'isv': float(isv_total),
-                'envio': float(envio_total),
-                'total': float(total_total)
+            response_data['detalle'] = {
+                'producto': producto.nombre,
+                'cantidad': cantidad,
+                'subtotal': float(subtotal),
+                'isv': float(isv),
+                'envio': float(envio),
+                'total': float(total)
             }
 
             return Response(response_data, status=status.HTTP_201_CREATED)
