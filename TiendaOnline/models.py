@@ -431,7 +431,18 @@ class CarritoTemp(models.Model):
         validators=[MinValueValidator(1)],
         null=False
     )
-    
+    fecha_creacion = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='Fecha de Creación'
+    )
+    fecha_actualizacion = models.DateTimeField(
+        auto_now=True,
+        verbose_name='Fecha de Actualización'
+    )
+    limite_compra = models.PositiveIntegerField(
+        default=10,
+        verbose_name='Límite de Compra'
+    )
 
     class Meta:
         verbose_name = 'Carrito Temporal'
@@ -445,4 +456,63 @@ class CarritoTemp(models.Model):
         # Validar que no exceda el stock disponible
         if self.cantidad_prod > self.producto.cantidad_en_stock:
             raise ValidationError('La cantidad excede el stock disponible')
+        
+        # Validar que no exceda el límite de compra
+        if self.cantidad_prod > self.limite_compra:
+            raise ValidationError(f'No puede comprar más de {self.limite_compra} unidades de este producto')
+        
+        # Actualizar cantidad_temp al guardar
+        self.cantidad_temp = self.cantidad_prod
+        
         super().save(*args, **kwargs)
+
+    @classmethod
+    def liberar_stock_expirado(cls):
+        """Libera el stock de items que han expirado (5 minutos)"""
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        tiempo_expiracion = timezone.now() - timedelta(minutes=5)
+        items_expirados = cls.objects.filter(
+            fecha_actualizacion__lt=tiempo_expiracion
+        )
+        
+        for item in items_expirados:
+            # Liberar el stock reservado
+            producto = item.producto
+            producto.cantidad_en_stock += item.cantidad_temp
+            producto.save()
+            
+            # Eliminar el item del carrito
+            item.delete()
+
+    @classmethod
+    def verificar_stock_disponible(cls, usuario):
+        """Verifica el stock disponible para todos los items del carrito de un usuario"""
+        items_sin_stock = []
+        items = cls.objects.filter(usuario=usuario)
+        
+        for item in items:
+            # Verificar si hay stock suficiente
+            if item.cantidad_prod > item.producto.cantidad_en_stock:
+                # Si no hay stock, eliminar el item
+                items_sin_stock.append({
+                    'producto': item.producto.nombre,
+                    'cantidad_solicitada': item.cantidad_prod,
+                    'stock_disponible': item.producto.cantidad_en_stock
+                })
+                item.delete()
+        
+        return items_sin_stock
+
+    def actualizar_cantidad(self, nueva_cantidad):
+        """Actualiza la cantidad de un item en el carrito"""
+        if nueva_cantidad > self.limite_compra:
+            raise ValidationError(f'No puede comprar más de {self.limite_compra} unidades de este producto')
+        
+        if nueva_cantidad > self.producto.cantidad_en_stock:
+            raise ValidationError('La cantidad excede el stock disponible')
+        
+        self.cantidad_prod = nueva_cantidad
+        self.cantidad_temp = nueva_cantidad
+        self.save()
