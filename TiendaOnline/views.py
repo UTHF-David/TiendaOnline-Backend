@@ -9,6 +9,7 @@ from .models import Producto, Pedido, PedidoDetalle, Usuario, CarritoTemp
 from rest_framework.authtoken.models import Token
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
 import base64
 from decimal import Decimal
@@ -352,66 +353,3 @@ class RegistrarMovimientoView(APIView):
             return Response({'error': 'Producto no encontrado'}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
-        ##tabla temporal para carrito(manejo stock)
-
-class CarritoTempViewSet(viewsets.ModelViewSet):
-    serializer_class = CarritoTempSerializer
-    authentication_classes = [TokenAuthentication]
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        """Retorna solo los items del carrito del usuario actual"""
-        return CarritoTemp.objects.filter(usuario=self.request.user)
-
-    def perform_create(self, serializer):
-        """Asigna automáticamente el usuario actual al crear un item"""
-        serializer.save(usuario=self.request.user)
-
-    @action(detail=False, methods=['get'])
-    def resumen(self, request):
-        """Obtiene un resumen del carrito con totales"""
-        carrito_items = self.get_queryset()
-        total_items = carrito_items.count()
-        total_cantidad = sum(item.cantidad_prod for item in carrito_items)
-        subtotal = sum(item.producto.precio * item.cantidad_prod for item in carrito_items)
-        isv = subtotal * Decimal('0.15')
-
-        return Response({
-            'total_items': total_items,
-            'total_cantidad': total_cantidad,
-            'subtotal': float(subtotal),
-            'isv': float(isv),
-            'total': float(subtotal + isv)
-        })
-
-    @action(detail=True, methods=['put'])
-    def actualizar_cantidad(self, request, pk=None):
-        """Actualiza la cantidad de un item en el carrito"""
-        item = self.get_object()
-        nueva_cantidad = request.data.get('cantidad_prod')
-
-        if not nueva_cantidad or not str(nueva_cantidad).isdigit():
-            return Response(
-                {'error': 'Cantidad inválida'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        nueva_cantidad = int(nueva_cantidad)
-        if nueva_cantidad > item.producto.cantidad_en_stock:
-            return Response(
-                {'error': f'Stock insuficiente. Disponible: {item.producto.cantidad_en_stock}'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        item.cantidad_prod = nueva_cantidad
-        item.save()
-
-        serializer = self.get_serializer(item)
-        return Response(serializer.data)
-
-    @action(detail=False, methods=['delete'])
-    def limpiar(self, request):
-        """Elimina todos los items del carrito del usuario"""
-        self.get_queryset().delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
