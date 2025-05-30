@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Producto, Pedido, PedidoDetalle, Usuario, CarritoTemp
+from .models import Producto, Pedido, PedidoDetalle, Usuario
 from django.contrib.auth.models import User
 from decimal import Decimal # Importar Decimal si se usa en algún serializer (aunque en PedidoDetalle.save es donde se usa principalmente)
 
@@ -115,50 +115,5 @@ class UsersSerializer(serializers.ModelSerializer):
         model = User # O Usuario si este serializer es para el modelo Usuario principal
         fields = ['username', 'first_name', 'last_name', 'email'] # Middle_name no está en AbstractUser por defecto
 
-class CarritoTempSerializer(serializers.ModelSerializer):
-    producto_nombre = serializers.CharField(source='producto.nombre', read_only=True)
-    producto_precio = serializers.DecimalField(source='producto.precio', max_digits=10, decimal_places=2, read_only=True)
-    stock_disponible = serializers.SerializerMethodField()
-    usuario_nombre = serializers.CharField(source='usuario.nombre_cliente', read_only=True)
-    imagen_producto = serializers.SerializerMethodField()
 
-    class Meta:
-        model = CarritoTemp
-        fields = [
-            'id', 'usuario', 'usuario_nombre', 'producto', 'producto_nombre',
-            'producto_precio', 'cantidad_prod', 'cantidad_temp', 'stock_disponible', 
-            'imagen_producto', 'fecha_creacion', 'fecha_actualizacion', 'limite_compra'
-        ]
-        read_only_fields = [
-            'id', 'usuario_nombre', 'producto_nombre', 'stock_disponible',
-            'imagen_producto', 'fecha_creacion', 'fecha_actualizacion'
-        ]
-
-    def get_stock_disponible(self, obj):
-        """Calcula el stock disponible considerando lo reservado"""
-        return obj.producto.cantidad_en_stock + obj.cantidad_temp
-
-    def get_imagen_producto(self, obj):
-        """Obtiene la imagen del producto en base64"""
-        return obj.producto.image
-
-    def validate(self, data):
-        """Validaciones adicionales"""
-        producto = data.get('producto') or self.instance.producto if self.instance else None
-        cantidad = data.get('cantidad_prod', 0)
-        
-        if producto and cantidad > 0:
-            # Verificar stock disponible
-            if cantidad > producto.cantidad_en_stock:
-                raise serializers.ValidationError(
-                    f'La cantidad excede el stock disponible ({producto.cantidad_en_stock} unidades)'
-                )
-            
-            # Verificar límite de compra
-            if cantidad > (self.instance.limite_compra if self.instance else 10):
-                raise serializers.ValidationError(
-                    f'No puede comprar más de {self.instance.limite_compra if self.instance else 10} unidades de este producto'
-                )
-        
-        return data
 

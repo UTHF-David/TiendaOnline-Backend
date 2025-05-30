@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Producto, Pedido, Usuario, PedidoDetalle, CarritoTemp
+from .models import Producto, Pedido, Usuario, PedidoDetalle
 
 
 # Reegister los modelos en el admin de Django
@@ -8,4 +8,4 @@ admin.site.register(Producto)
 admin.site.register(Pedido)
 admin.site.register(Usuario)
 admin.site.register(PedidoDetalle)
-admin.site.register(CarritoTemp) 
+
