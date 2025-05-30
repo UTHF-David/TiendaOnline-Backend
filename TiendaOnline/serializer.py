@@ -126,11 +126,11 @@ class CarritoTempSerializer(serializers.ModelSerializer):
         model = CarritoTemp
         fields = [
             'id', 'usuario', 'usuario_nombre', 'producto', 'producto_nombre',
-            'cantidad_prod', 'cantidad_temp', 'stock_disponible', 'imagen_producto',
-            'fecha_creacion', 'fecha_actualizacion', 'limite_compra'
+            'producto_precio', 'cantidad_prod', 'cantidad_temp', 'stock_disponible', 
+            'imagen_producto', 'fecha_creacion', 'fecha_actualizacion', 'limite_compra'
         ]
         read_only_fields = [
-            'id', 'usuario_nombre', 'producto_nombre', 'stock_disponible',
+            'id', 'usuario_nombre', 'producto_nombre', 'producto_precio', 'stock_disponible',
             'imagen_producto', 'fecha_creacion', 'fecha_actualizacion'
         ]
 
