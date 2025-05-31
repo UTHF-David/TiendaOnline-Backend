@@ -443,7 +443,8 @@ class PedidoViewSet(viewsets.ModelViewSet):
         GET /pedidos/{id}/detalles/ - Obtiene los detalles de un pedido
         PUT /pedidos/{id}/actualizar_estado/ - Actualiza el estado de un pedido
     """
-    queryset = Pedido.objects.all()
+    #queryset = Pedido.objects.all()
+    queryset = Pedido.objects.all().select_related('usuario').prefetch_related('detalles')
     serializer_class = PedidoSerializer
 
     def create(self, request, *args, **kwargs):
@@ -643,3 +644,4 @@ class RegistrarMovimientoView(APIView):
             return Response({'error': 'Producto no encontrado'}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
