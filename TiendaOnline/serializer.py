@@ -157,6 +157,25 @@ class PedidoDetalleSerializer(serializers.ModelSerializer):
                  'cantidad_prod', 'subtotal', 'isv', 'envio', 'total']
         read_only_fields = ['id', 'subtotal', 'isv', 'envio', 'total']
 
+    def validate(self, data):
+        """
+        Valida los datos del detalle de pedido.
+        
+        Args:
+            data (dict): Datos a validar
+            
+        Returns:
+            dict: Datos validados
+            
+        Raises:
+            ValidationError: Si la cantidad excede el stock disponible
+        """
+        if data.get('cantidad_prod', 0) > data['producto'].cantidad_en_stock:
+            raise serializers.ValidationError(
+                f'La cantidad excede el stock disponible ({data["producto"].cantidad_en_stock} unidades)'
+            )
+        return data
+
 
 class PedidoSerializer(serializers.ModelSerializer):
     """

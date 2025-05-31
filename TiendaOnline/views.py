@@ -291,7 +291,8 @@ class PedidoDetalleViewSet(viewsets.ModelViewSet):
     """
     ViewSet para gestionar detalles de pedidos.
     
-    Este ViewSet maneja las operaciones CRUD para detalles de pedidos.
+    Este ViewSet maneja las operaciones CRUD para detalles de pedidos,
+    incluyendo la creación y actualización de detalles individuales.
     
     Endpoints:
         GET /detalles-pedido/ - Lista todos los detalles
@@ -303,13 +304,135 @@ class PedidoDetalleViewSet(viewsets.ModelViewSet):
     queryset = PedidoDetalle.objects.all()
     serializer_class = PedidoDetalleSerializer
 
+    def create(self, request, *args, **kwargs):
+        """
+        Crea un nuevo detalle de pedido.
+        
+        Args:
+            request: Request con los datos del detalle
+            
+        Returns:
+            Response: Detalle creado o error
+        """
+        try:
+            # Crear una copia mutable de los datos de la request
+            data = request.data.copy()
+            
+            # Verificar que el pedido existe
+            pedido = get_object_or_404(Pedido, id_pedido=data.get('pedido'))
+            
+            # Verificar que el producto existe
+            producto = get_object_or_404(Producto, id=data.get('producto'))
+            
+            # Validar que hay suficiente stock disponible
+            cantidad = int(data.get('cantidad_prod', 1))
+            if producto.cantidad_en_stock < cantidad:
+                return Response({
+                    'error': f'No hay suficiente stock disponible para {producto.nombre}'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # Crear el detalle del pedido con los valores monetarios proporcionados
+            detalle = PedidoDetalle.objects.create(
+                pedido=pedido,
+                producto=producto,
+                cantidad_prod=cantidad,
+                subtotal=Decimal(str(data.get('subtotal', '0.00'))),
+                isv=Decimal(str(data.get('isv', '0.00'))),
+                envio=Decimal(str(data.get('envio', '0.00'))),
+                total=Decimal(str(data.get('total', '0.00')))
+            )
+
+            # Actualizar el stock del producto restando la cantidad comprada
+            producto.cantidad_en_stock -= cantidad
+            producto.save()
+
+            # Serializar y devolver el detalle creado
+            serializer = self.get_serializer(detalle)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            
+        except Exception as e:
+            return Response({
+                'error': str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+    def update(self, request, *args, **kwargs):
+        """
+        Actualiza un detalle de pedido existente.
+        
+        Args:
+            request: Request con los datos actualizados
+            
+        Returns:
+            Response: Detalle actualizado o error
+        """
+        try:
+            # Obtener la instancia actual del detalle
+            instance = self.get_object()
+            data = request.data.copy()
+            
+            # Si se está actualizando la cantidad, validar el stock disponible
+            if 'cantidad_prod' in data:
+                nueva_cantidad = int(data['cantidad_prod'])
+                # Calcular la diferencia entre la nueva cantidad y la actual
+                diferencia = nueva_cantidad - instance.cantidad_prod
+                
+                # Verificar si hay suficiente stock para la diferencia
+                if instance.producto.cantidad_en_stock < diferencia:
+                    return Response({
+                        'error': f'No hay suficiente stock disponible para {instance.producto.nombre}'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+                
+                # Actualizar el stock del producto
+                instance.producto.cantidad_en_stock -= diferencia
+                instance.producto.save()
+            
+            # Actualizar el detalle con los nuevos datos
+            serializer = self.get_serializer(instance, data=data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
+            
+            return Response(serializer.data)
+            
+        except Exception as e:
+            return Response({
+                'error': str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+    def destroy(self, request, *args, **kwargs):
+        """
+        Elimina un detalle de pedido y devuelve el stock.
+        
+        Args:
+            request: Request
+            
+        Returns:
+            Response: Confirmación de eliminación
+        """
+        try:
+            # Obtener la instancia del detalle a eliminar
+            instance = self.get_object()
+            
+            # Devolver el stock al producto
+            producto = instance.producto
+            producto.cantidad_en_stock += instance.cantidad_prod
+            producto.save()
+            
+            # Eliminar el detalle
+            self.perform_destroy(instance)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+            
+        except Exception as e:
+            return Response({
+                'error': str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+
 
 class PedidoViewSet(viewsets.ModelViewSet):
     """
     ViewSet para gestionar pedidos.
     
     Este ViewSet maneja las operaciones CRUD para pedidos,
-    incluyendo la creación de pedidos con múltiples productos.
+    incluyendo la creación de pedidos y la gestión de sus estados.
     
     Endpoints:
         GET /pedidos/ - Lista todos los pedidos
@@ -325,19 +448,19 @@ class PedidoViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         """
-        Crea un nuevo pedido con sus detalles.
+        Crea un nuevo pedido.
         
         Args:
-            request: Request con los datos del pedido y sus productos
+            request: Request con los datos del pedido
             
         Returns:
-            Response: Pedido creado con sus detalles
+            Response: Pedido creado o error
         """
         try:
+            # Crear una copia mutable de los datos de la request
             data = request.data.copy()
-            print("Data PedidoViewSet: ",data)
             
-            # Crear el pedido
+            # Crear el pedido con los datos proporcionados
             pedido = Pedido.objects.create(
                 usuario_id=data.get('usuario_id'),
                 company=data.get('compañia'),
@@ -348,55 +471,14 @@ class PedidoViewSet(viewsets.ModelViewSet):
                 zip=data.get('zip'),
                 correo=data.get('correo'),
                 telefono=data.get('telefono'),
-                estado_compra='Pagado',
+                estado_compra='Pagado',  # Estado inicial por defecto
                 desc_adicional=data.get('desc_adicional'),
-                es_movimiento_interno=False
+                es_movimiento_interno=False  # Por defecto no es movimiento interno
             )
 
-            # Crear el detalle del pedido
-            producto = get_object_or_404(Producto, id=data.get('producto'))
-            cantidad = int(data.get('cantidad_prod', 1))
-
-            if producto.cantidad_en_stock < cantidad:
-                pedido.delete()
-                return Response({
-                    'error': f'No hay suficiente stock disponible para {producto.nombre}'
-                }, status=status.HTTP_400_BAD_REQUEST)
-
-            # Obtener los valores monetarios del frontend
-            subtotal = Decimal(str(data.get('subtotal', '0.00')))
-            isv = Decimal(str(data.get('isv', '0.00')))
-            envio = Decimal(str(data.get('envio', '0.00')))  # Este valor ya viene dividido por la cantidad de productos
-            total = Decimal(str(data.get('total', '0.00')))
-
-            # Crear el detalle del pedido con los valores exactos del frontend
-            detalle = PedidoDetalle.objects.create(
-                pedido=pedido,
-                producto=producto,
-                cantidad_prod=cantidad,
-                subtotal=subtotal,
-                isv=isv,
-                envio=envio,  # Usamos el valor de envío que ya viene dividido
-                total=total
-            )
-
-            # Actualizar el stock del producto
-            producto.cantidad_en_stock -= cantidad
-            producto.save()
-
-            # Preparar la respuesta con los valores exactos
+            # Serializar y devolver el pedido creado
             serializer = self.get_serializer(pedido)
-            response_data = serializer.data
-            response_data['detalle'] = {
-                'producto': producto.nombre,
-                'cantidad': cantidad,
-                'subtotal': float(subtotal),
-                'isv': float(isv),
-                'envio': float(envio),
-                'total': float(total)
-            }
-
-            return Response(response_data, status=status.HTTP_201_CREATED)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
             
         except Exception as e:
             return Response({
@@ -415,8 +497,10 @@ class PedidoViewSet(viewsets.ModelViewSet):
         Returns:
             Response: Lista de detalles del pedido
         """
+        # Obtener el pedido y sus detalles
         pedido = self.get_object()
         detalles = pedido.detalles.all()
+        # Serializar y devolver los detalles
         serializer = PedidoDetalleSerializer(detalles, many=True)
         return Response(serializer.data)
 
@@ -432,19 +516,52 @@ class PedidoViewSet(viewsets.ModelViewSet):
         Returns:
             Response: Pedido actualizado
         """
+        # Obtener el pedido y el nuevo estado
         pedido = self.get_object()
         nuevo_estado = request.data.get('estado_compra')
         
+        # Validar que el estado sea válido
         if nuevo_estado not in dict(Pedido.ESTADO_CHOICES):
             return Response({
                 'error': 'Estado inválido'
             }, status=status.HTTP_400_BAD_REQUEST)
             
+        # Actualizar el estado del pedido
         pedido.estado_compra = nuevo_estado
         pedido.save()
         
+        # Serializar y devolver el pedido actualizado
         serializer = self.get_serializer(pedido)
         return Response(serializer.data)
+
+    def destroy(self, request, *args, **kwargs):
+        """
+        Elimina un pedido y devuelve el stock de sus detalles.
+        
+        Args:
+            request: Request
+            
+        Returns:
+            Response: Confirmación de eliminación
+        """
+        try:
+            # Obtener la instancia del pedido a eliminar
+            instance = self.get_object()
+            
+            # Devolver el stock de todos los detalles del pedido
+            for detalle in instance.detalles.all():
+                producto = detalle.producto
+                producto.cantidad_en_stock += detalle.cantidad_prod
+                producto.save()
+            
+            # Eliminar el pedido
+            self.perform_destroy(instance)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+            
+        except Exception as e:
+            return Response({
+                'error': str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
 
 
 class RegistrarMovimientoView(APIView):
