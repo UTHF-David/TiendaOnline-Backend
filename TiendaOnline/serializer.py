@@ -248,50 +248,7 @@ class UsersSerializer(serializers.ModelSerializer):
         fields = ['username', 'first_name', 'last_name', 'email']
 
 
-class CarritoTempSerializer(serializers.ModelSerializer):
-    """
-    Serializer para el modelo CarritoTemp.
-    
-    Este serializer maneja la serialización del carrito temporal de compras.
-    
-    Campos:
-        id: Identificador del item del carrito
-        usuario: Referencia al usuario
-        usuario_nombre: Nombre del usuario (solo lectura)
-        producto: Referencia al producto
-        producto_nombre: Nombre del producto (solo lectura)
-        cantidad_prod: Cantidad de productos
-        cantidad_temp: Cantidad temporal reservada
-        stock_disponible: Stock disponible del producto (solo lectura)
-    """
-    producto_nombre = serializers.CharField(source='producto.nombre', read_only=True)
-    stock_disponible = serializers.IntegerField(source='producto.cantidad_en_stock', read_only=True)
-    usuario_nombre = serializers.CharField(source='usuario.nombre_cliente', read_only=True)
 
-    class Meta:
-        model = CarritoTemp
-        fields = ['id', 'usuario', 'usuario_nombre', 'producto', 'producto_nombre', 
-                 'cantidad_prod', 'cantidad_temp', 'stock_disponible']
-        read_only_fields = ['id', 'usuario_nombre', 'producto_nombre', 'stock_disponible']
-
-    def validate(self, data):
-        """
-        Valida que la cantidad no exceda el stock disponible.
-        
-        Args:
-            data (dict): Datos a validar
-            
-        Returns:
-            dict: Datos validados
-            
-        Raises:
-            ValidationError: Si la cantidad excede el stock disponible
-        """
-        if data.get('cantidad_prod', 0) > data['producto'].cantidad_en_stock:
-            raise serializers.ValidationError(
-                f'La cantidad excede el stock disponible ({data["producto"].cantidad_en_stock} unidades)'
-            )
-        return data
 
 
 
