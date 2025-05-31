@@ -6,6 +6,16 @@ from decimal import Decimal # Importar Decimal si se usa en algún serializer (a
 
 #Con este serializer se puede crear un usuario con un pais
 class UsuarioSerializer(serializers.ModelSerializer):
+    """
+    Serializer para el modelo Usuario.
+    
+    Este serializer maneja la serialización y deserialización de usuarios,
+    incluyendo el manejo seguro de contraseñas.
+    
+    Campos:
+        Todos los campos del modelo Usuario
+        password: Campo de solo escritura para manejar contraseñas de forma segura
+    """
     class Meta:
         model = Usuario
         fields = '__all__'
@@ -15,6 +25,15 @@ class UsuarioSerializer(serializers.ModelSerializer):
         }
 
     def create(self, validated_data):
+        """
+        Crea un nuevo usuario con contraseña encriptada.
+        
+        Args:
+            validated_data (dict): Datos validados del usuario
+            
+        Returns:
+            Usuario: Instancia del usuario creado
+        """
         password = validated_data.pop('password', None)
         user = super().create(validated_data)
         if password:
@@ -23,6 +42,16 @@ class UsuarioSerializer(serializers.ModelSerializer):
         return user
 
     def update(self, instance, validated_data):
+        """
+        Actualiza un usuario existente, manejando la contraseña de forma segura.
+        
+        Args:
+            instance (Usuario): Instancia del usuario a actualizar
+            validated_data (dict): Datos validados para la actualización
+            
+        Returns:
+            Usuario: Instancia del usuario actualizado
+        """
         password = validated_data.pop('password', None)
         user = super().update(instance, validated_data)
         if password:
@@ -32,6 +61,16 @@ class UsuarioSerializer(serializers.ModelSerializer):
 
 
 class ProductoSerializer(serializers.ModelSerializer):
+    """
+    Serializer para el modelo Producto.
+    
+    Este serializer maneja la serialización de productos, incluyendo
+    la validación de imágenes en formato Base64.
+    
+    Campos:
+        Todos los campos del modelo Producto
+        imagen_base64: Campo opcional para manejar imágenes en Base64
+    """
     class Meta:
         model = Producto
         fields = '__all__'
@@ -40,15 +79,43 @@ class ProductoSerializer(serializers.ModelSerializer):
         }
 
     def create(self, validated_data):
-        # Guardar directamente la cadena Base64 en la base de datos
+        """
+        Crea un nuevo producto.
+        
+        Args:
+            validated_data (dict): Datos validados del producto
+            
+        Returns:
+            Producto: Instancia del producto creado
+        """
         return super().create(validated_data)
 
     def update(self, instance, validated_data):
-        # Actualizar directamente la cadena Base64 en la base de datos
+        """
+        Actualiza un producto existente.
+        
+        Args:
+            instance (Producto): Instancia del producto a actualizar
+            validated_data (dict): Datos validados para la actualización
+            
+        Returns:
+            Producto: Instancia del producto actualizado
+        """
         return super().update(instance, validated_data)
 
     def validate_imagen_base64(self, value):
-        # Validar que el valor sea una imagen válida en formato Base64
+        """
+        Valida que el valor proporcionado sea una imagen válida en formato Base64.
+        
+        Args:
+            value (str): Cadena Base64 de la imagen
+            
+        Returns:
+            str: Cadena Base64 validada
+            
+        Raises:
+            ValidationError: Si el valor no es una imagen válida en Base64
+        """
         try:
             if value:
                 import base64
@@ -63,6 +130,24 @@ class ProductoSerializer(serializers.ModelSerializer):
 
 
 class PedidoDetalleSerializer(serializers.ModelSerializer):
+    """
+    Serializer para el modelo PedidoDetalle.
+    
+    Este serializer maneja la serialización de detalles de pedido,
+    incluyendo información adicional del producto.
+    
+    Campos:
+        id: Identificador del detalle
+        pedido: Referencia al pedido
+        producto: Referencia al producto
+        producto_nombre: Nombre del producto (solo lectura)
+        producto_precio: Precio del producto (solo lectura)
+        cantidad_prod: Cantidad de productos
+        subtotal: Subtotal del detalle
+        isv: Impuesto sobre ventas
+        envio: Costo de envío
+        total: Total del detalle
+    """
     producto_nombre = serializers.CharField(source='producto.nombre', read_only=True)
     producto_precio = serializers.DecimalField(source='producto.precio', max_digits=10, decimal_places=2, read_only=True)
 
@@ -70,20 +155,40 @@ class PedidoDetalleSerializer(serializers.ModelSerializer):
         model = PedidoDetalle
         fields = ['id', 'pedido', 'producto', 'producto_nombre', 'producto_precio',
                  'cantidad_prod', 'subtotal', 'isv', 'envio', 'total']
-        # Se elimina 'envio' de read_only_fields para permitir que se escriba
         read_only_fields = ['id', 'subtotal', 'isv', 'envio', 'total']
 
 
 class PedidoSerializer(serializers.ModelSerializer):
+    """
+    Serializer para el modelo Pedido.
+    
+    Este serializer maneja la serialización de pedidos,
+    incluyendo sus detalles y totales.
+    
+    Campos:
+        id_pedido: Identificador del pedido
+        usuario: Referencia al usuario
+        usuario_nombre: Nombre del usuario (solo lectura)
+        company: Compañía
+        direccion: Dirección de envío
+        pais: País
+        pais_nombre: Nombre del país (solo lectura)
+        estado_pais: Estado/Provincia
+        ciudad: Ciudad
+        zip: Código postal
+        correo: Correo electrónico
+        telefono: Teléfono
+        estado_compra: Estado del pedido
+        desc_adicional: Descripción adicional
+        fecha_compra: Fecha de creación
+        fecha_entrega: Fecha de entrega
+        detalles: Lista de detalles del pedido
+        total_pedido: Total del pedido (solo lectura)
+        es_movimiento_interno: Indica si es un movimiento interno
+    """
     detalles = PedidoDetalleSerializer(many=True, read_only=True)
     usuario_nombre = serializers.CharField(source='usuario.nombre_cliente', read_only=True)
-    # pais_nombre: si pais en modelo Pedido es CharField, no puedes usar source='pais.pais'
-    # Si pais en modelo Pedido fuera ForeignKey a un modelo Pais con campo 'pais', esto estaría bien
-    # Si es CharField y guarda el ID, quizás necesites un SerializerMethodField para mostrar el nombre
-    # Si es CharField y guarda el nombre, source='pais' podría funcionar si el campo es solo 'pais'
-    # Por ahora, dejo pais_nombre como read_only=True y asumo que el frontend maneja la visualización del nombre.
-    pais_nombre = serializers.CharField(source='pais', read_only=True) # Ajustado a source='pais' si pais es CharField
-
+    pais_nombre = serializers.CharField(source='pais', read_only=True)
     total_pedido = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
 
     class Meta:
@@ -91,29 +196,102 @@ class PedidoSerializer(serializers.ModelSerializer):
         fields = ['id_pedido', 'usuario', 'usuario_nombre', 'company', 'direccion',
                  'pais', 'pais_nombre', 'estado_pais', 'ciudad', 'zip', 'correo',
                  'telefono', 'estado_compra', 'desc_adicional', 'fecha_compra',
-                 'fecha_entrega', 'detalles', 'total_pedido','es_movimiento_interno']
-        read_only_fields = ['id_pedido', 'fecha_compra', 'total_pedido', 'usuario_nombre', 'pais_nombre','es_movimiento_interno'] # usuario_nombre y pais_nombre son read_only
+                 'fecha_entrega', 'detalles', 'total_pedido', 'es_movimiento_interno']
+        read_only_fields = ['id_pedido', 'fecha_compra', 'total_pedido', 'usuario_nombre', 'pais_nombre', 'es_movimiento_interno']
+
 
 class PedidoCreateSerializer(serializers.ModelSerializer):
+    """
+    Serializer para la creación de pedidos.
+    
+    Este serializer maneja la creación de pedidos con múltiples productos.
+    
+    Campos:
+        usuario: Referencia al usuario
+        company: Compañía
+        direccion: Dirección de envío
+        pais: País
+        estado_pais: Estado/Provincia
+        ciudad: Ciudad
+        zip: Código postal
+        correo: Correo electrónico
+        telefono: Teléfono
+        desc_adicional: Descripción adicional
+        productos: Lista de productos a incluir en el pedido
+        estado_compra: Estado del pedido
+    """
     productos = serializers.ListField(
         child=serializers.DictField(),
         write_only=True
     )
-    # Asegúrate de que 'pais' aquí corresponda al tipo de datos que esperas recibir
-    # Si esperas el ID numérico del frontend y el modelo Pedido.pais es CharField,
-    # quizás necesites validar y guardar el ID como cadena o convertirlo a nombre si lo prefieres.
-    # Por simplicidad, asumimos que recibes algo que puedes asignar directamente al CharField 'pais'.
-
 
     class Meta:
         model = Pedido
         fields = ['usuario', 'company', 'direccion', 'pais', 'estado_pais',
-                 'ciudad', 'zip', 'correo', 'telefono', 'desc_adicional', 'productos', 'estado_compra'] # Incluir estado_compra si el backend lo establece o lo recibe
+                 'ciudad', 'zip', 'correo', 'telefono', 'desc_adicional', 'productos', 'estado_compra']
+
 
 class UsersSerializer(serializers.ModelSerializer):
+    """
+    Serializer para el modelo User de Django.
+    
+    Este serializer maneja la serialización de usuarios del sistema.
+    
+    Campos:
+        username: Nombre de usuario
+        first_name: Nombre
+        last_name: Apellido
+        email: Correo electrónico
+    """
     class Meta:
-        model = User # O Usuario si este serializer es para el modelo Usuario principal
-        fields = ['username', 'first_name', 'last_name', 'email'] # Middle_name no está en AbstractUser por defecto
+        model = User
+        fields = ['username', 'first_name', 'last_name', 'email']
+
+
+class CarritoTempSerializer(serializers.ModelSerializer):
+    """
+    Serializer para el modelo CarritoTemp.
+    
+    Este serializer maneja la serialización del carrito temporal de compras.
+    
+    Campos:
+        id: Identificador del item del carrito
+        usuario: Referencia al usuario
+        usuario_nombre: Nombre del usuario (solo lectura)
+        producto: Referencia al producto
+        producto_nombre: Nombre del producto (solo lectura)
+        cantidad_prod: Cantidad de productos
+        cantidad_temp: Cantidad temporal reservada
+        stock_disponible: Stock disponible del producto (solo lectura)
+    """
+    producto_nombre = serializers.CharField(source='producto.nombre', read_only=True)
+    stock_disponible = serializers.IntegerField(source='producto.cantidad_en_stock', read_only=True)
+    usuario_nombre = serializers.CharField(source='usuario.nombre_cliente', read_only=True)
+
+    class Meta:
+        model = CarritoTemp
+        fields = ['id', 'usuario', 'usuario_nombre', 'producto', 'producto_nombre', 
+                 'cantidad_prod', 'cantidad_temp', 'stock_disponible']
+        read_only_fields = ['id', 'usuario_nombre', 'producto_nombre', 'stock_disponible']
+
+    def validate(self, data):
+        """
+        Valida que la cantidad no exceda el stock disponible.
+        
+        Args:
+            data (dict): Datos a validar
+            
+        Returns:
+            dict: Datos validados
+            
+        Raises:
+            ValidationError: Si la cantidad excede el stock disponible
+        """
+        if data.get('cantidad_prod', 0) > data['producto'].cantidad_en_stock:
+            raise serializers.ValidationError(
+                f'La cantidad excede el stock disponible ({data["producto"].cantidad_en_stock} unidades)'
+            )
+        return data
 
 
 

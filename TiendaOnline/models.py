@@ -404,3 +404,173 @@ class PedidoDetalle(models.Model):
     
     ##Nuevo manejo de stock con tabla de registros temporal
 
+class CarritoTemp(models.Model):
+    """
+    Modelo para gestionar el carrito temporal de compras de los usuarios.
+    
+    Este modelo maneja los productos que los usuarios agregan a su carrito de compras,
+    incluyendo la gestión de stock temporal y límites de compra.
+    
+    Atributos:
+        id (AutoField): Identificador único del registro del carrito
+        usuario (ForeignKey): Usuario que posee el carrito
+        producto (ForeignKey): Producto agregado al carrito
+        cantidad_prod (PositiveIntegerField): Cantidad de productos solicitados
+        cantidad_temp (PositiveIntegerField): Cantidad temporal reservada
+        fecha_creacion (DateTimeField): Fecha de creación del registro
+        fecha_actualizacion (DateTimeField): Fecha de última actualización
+        limite_compra (PositiveIntegerField): Límite máximo de compra por producto
+    """
+    id = models.AutoField(primary_key=True)
+    usuario = models.ForeignKey(
+        Usuario,
+        on_delete=models.CASCADE,
+        related_name='carritos_temp',
+        verbose_name='Usuario',
+        null=False
+    )
+    producto = models.ForeignKey(
+        Producto,
+        on_delete=models.CASCADE,
+        related_name='carritos_temp',
+        verbose_name='Producto',
+        null=False
+    )
+    cantidad_prod = models.PositiveIntegerField(
+        verbose_name='Cantidad',
+        validators=[MinValueValidator(1)],
+        null=False
+    )
+    cantidad_temp = models.PositiveIntegerField(
+        verbose_name='Cantidad Temporal',
+        validators=[MinValueValidator(1)],
+        null=False
+    )
+    fecha_creacion = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='Fecha de Creación'
+    )
+    fecha_actualizacion = models.DateTimeField(
+        auto_now=True,
+        verbose_name='Fecha de Actualización'
+    )
+    limite_compra = models.PositiveIntegerField(
+        default=10,
+        verbose_name='Límite de Compra'
+    )
+
+    class Meta:
+        verbose_name = 'Carrito Temporal'
+        verbose_name_plural = 'Carritos Temporales'
+        unique_together = ['usuario', 'producto']  # Evita duplicados de productos por usuario
+
+    def __str__(self):
+        """Retorna una representación legible del registro del carrito."""
+        return f"Carrito de {self.usuario.nombre_cliente} - {self.producto.nombre}"
+
+    def save(self, *args, **kwargs):
+        """
+        Sobrescribe el método save para realizar validaciones antes de guardar.
+        
+        Validaciones:
+            - Verifica que la cantidad no exceda el stock disponible
+            - Verifica que la cantidad no exceda el límite de compra
+            - Actualiza cantidad_temp para que coincida con cantidad_prod
+        
+        Raises:
+            ValidationError: Si se excede el stock disponible o el límite de compra
+        """
+        # Validar que no exceda el stock disponible
+        if self.cantidad_prod > self.producto.cantidad_en_stock:
+            raise ValidationError('La cantidad excede el stock disponible')
+        
+        # Validar que no exceda el límite de compra
+        if self.cantidad_prod > self.limite_compra:
+            raise ValidationError(f'No puede comprar más de {self.limite_compra} unidades de este producto')
+        
+        # Actualizar cantidad_temp al guardar
+        self.cantidad_temp = self.cantidad_prod
+        
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def liberar_stock_expirado(cls):
+        """
+        Libera el stock de items que han expirado (5 minutos).
+        
+        Este método:
+        1. Identifica items no actualizados en los últimos 5 minutos
+        2. Libera el stock reservado devolviéndolo al producto
+        3. Elimina los items expirados del carrito
+        
+        Returns:
+            None
+        """
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        tiempo_expiracion = timezone.now() - timedelta(minutes=5)
+        items_expirados = cls.objects.filter(
+            fecha_actualizacion__lt=tiempo_expiracion
+        )
+        
+        for item in items_expirados:
+            # Liberar el stock reservado
+            producto = item.producto
+            producto.cantidad_en_stock += item.cantidad_temp
+            producto.save()
+            
+            # Eliminar el item del carrito
+            item.delete()
+
+    @classmethod
+    def verificar_stock_disponible(cls, usuario):
+        """
+        Verifica el stock disponible para todos los items del carrito de un usuario.
+        
+        Args:
+            usuario: Instancia del modelo Usuario
+            
+        Returns:
+            list: Lista de diccionarios con información de productos sin stock
+                Cada diccionario contiene:
+                - producto: nombre del producto
+                - cantidad_solicitada: cantidad que se intentó comprar
+                - stock_disponible: stock actual del producto
+        """
+        items_sin_stock = []
+        items = cls.objects.filter(usuario=usuario)
+        
+        for item in items:
+            # Verificar si hay stock suficiente
+            if item.cantidad_prod > item.producto.cantidad_en_stock:
+                # Si no hay stock, eliminar el item
+                items_sin_stock.append({
+                    'producto': item.producto.nombre,
+                    'cantidad_solicitada': item.cantidad_prod,
+                    'stock_disponible': item.producto.cantidad_en_stock
+                })
+                item.delete()
+        
+        return items_sin_stock
+
+    def actualizar_cantidad(self, nueva_cantidad):
+        """
+        Actualiza la cantidad de un item en el carrito.
+        
+        Args:
+            nueva_cantidad (int): Nueva cantidad a establecer
+            
+        Raises:
+            ValidationError: Si la nueva cantidad excede el stock disponible o el límite de compra
+        """
+        if nueva_cantidad > self.limite_compra:
+            raise ValidationError(f'No puede comprar más de {self.limite_compra} unidades de este producto')
+        
+        if nueva_cantidad > self.producto.cantidad_en_stock:
+            raise ValidationError('La cantidad excede el stock disponible')
+        
+        self.cantidad_prod = nueva_cantidad
+        self.cantidad_temp = nueva_cantidad
+        self.save()
+

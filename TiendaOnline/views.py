@@ -16,13 +16,38 @@ from decimal import Decimal
 
 
 class ProductoViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para gestionar productos.
+    
+    Este ViewSet maneja las operaciones CRUD para productos,
+    incluyendo la gestión de imágenes en Base64.
+    
+    Endpoints:
+        GET /productos/ - Lista todos los productos
+        POST /productos/ - Crea un nuevo producto
+        GET /productos/{id}/ - Obtiene un producto específico
+        PUT /productos/{id}/ - Actualiza un producto
+        DELETE /productos/{id}/ - Elimina un producto
+        PUT /productos/{id}/cantidad_en_stock/{cantidad}/ - Actualiza el stock
+        PUT /productos/{id}/cantidad_en_stock/{cantidad}/ - Añade stock
+    """
     parser_classes = [MultiPartParser, FormParser]
     queryset = Producto.objects.all()
     serializer_class = ProductoSerializer
 
     def create(self, request, *args, **kwargs):
+        """
+        Crea un nuevo producto con imagen en Base64.
+        
+        Args:
+            request: Request con los datos del producto
+            *args: Argumentos adicionales
+            **kwargs: Argumentos con nombre adicionales
+            
+        Returns:
+            Response: Respuesta con el producto creado o error
+        """
         try:
-            # Crear copia mutable de los datos
             data = request.data.copy()
             
             if 'imagen' in request.FILES:
@@ -44,10 +69,20 @@ class ProductoViewSet(viewsets.ModelViewSet):
             )
 
     def update(self, request, *args, **kwargs):
+        """
+        Actualiza un producto existente.
+        
+        Args:
+            request: Request con los datos actualizados
+            *args: Argumentos adicionales
+            **kwargs: Argumentos con nombre adicionales
+            
+        Returns:
+            Response: Respuesta con el producto actualizado
+        """
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
         
-        # Crear copia mutable de los datos
         data = request.data.copy()
         
         if 'imagen' in request.FILES:
@@ -63,6 +98,17 @@ class ProductoViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['put'], url_path='cantidad_en_stock/(?P<cantidad>[0-9]+)')
     def update_stock(self, request, pk=None, cantidad=None):
+        """
+        Actualiza el stock de un producto restando la cantidad especificada.
+        
+        Args:
+            request: Request con los datos
+            pk: ID del producto
+            cantidad: Cantidad a restar del stock
+            
+        Returns:
+            Response: Respuesta con el stock actualizado o error
+        """
         try:
             producto = get_object_or_404(Producto, id=pk)
 
@@ -91,6 +137,17 @@ class ProductoViewSet(viewsets.ModelViewSet):
         
     @action(detail=True, methods=['put'], url_path='cantidad_en_stock/(?P<cantidad>[0-9-]+)')
     def add_update_stock(self, request, pk=None, cantidad=None):
+        """
+        Actualiza el stock de un producto sumando la cantidad especificada.
+        
+        Args:
+            request: Request con los datos
+            pk: ID del producto
+            cantidad: Cantidad a sumar al stock (puede ser negativa)
+            
+        Returns:
+            Response: Respuesta con el stock actualizado o error
+        """
         try:
             producto = get_object_or_404(Producto, id=pk)
 
@@ -117,13 +174,39 @@ class ProductoViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
 class UsuarioViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para gestionar usuarios.
+    
+    Este ViewSet maneja las operaciones CRUD para usuarios,
+    incluyendo autenticación y registro.
+    
+    Endpoints:
+        GET /usuarios/ - Lista todos los usuarios
+        POST /usuarios/ - Crea un nuevo usuario
+        GET /usuarios/{id}/ - Obtiene un usuario específico
+        PUT /usuarios/{id}/ - Actualiza un usuario
+        DELETE /usuarios/{id}/ - Elimina un usuario
+        POST /login/ - Inicia sesión
+        POST /register/ - Registra un nuevo usuario
+        PUT /profile/ - Actualiza el perfil del usuario actual
+    """
     queryset = Usuario.objects.all()
     serializer_class = UsuarioSerializer
 
     @api_view(['POST'])
     @permission_classes([AllowAny])
     def login(request):
+        """
+        Inicia sesión de un usuario.
+        
+        Args:
+            request: Request con email y password
+            
+        Returns:
+            Response: Token de autenticación y datos del usuario
+        """
         user = get_object_or_404(Usuario, email=request.data['email'])
 
         if not user.check_password(request.data['password']):
@@ -137,8 +220,16 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     @api_view(['POST'])
     @permission_classes([AllowAny])
     def register(request):
+        """
+        Registra un nuevo usuario.
+        
+        Args:
+            request: Request con los datos del usuario
+            
+        Returns:
+            Response: Token de autenticación y datos del usuario creado
+        """
         try:
-            # Crear copia mutable de los datos
             data = request.data.copy()
             
             serializer = UsuarioSerializer(data=data)
@@ -163,9 +254,17 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     @authentication_classes([TokenAuthentication]) 
     @permission_classes([IsAuthenticated])
     def profile(request):
+        """
+        Actualiza el perfil del usuario actual.
+        
+        Args:
+            request: Request con los datos actualizados
+            
+        Returns:
+            Response: Datos del usuario actualizados
+        """
         try:
             user = request.user
-            # Crear copia mutable de los datos
             data = request.data.copy()
             
             serializer = UsuarioSerializer(user, data=data, partial=True)
@@ -189,16 +288,52 @@ class UsuarioViewSet(viewsets.ModelViewSet):
 
 
 class PedidoDetalleViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para gestionar detalles de pedidos.
+    
+    Este ViewSet maneja las operaciones CRUD para detalles de pedidos.
+    
+    Endpoints:
+        GET /detalles-pedido/ - Lista todos los detalles
+        POST /detalles-pedido/ - Crea un nuevo detalle
+        GET /detalles-pedido/{id}/ - Obtiene un detalle específico
+        PUT /detalles-pedido/{id}/ - Actualiza un detalle
+        DELETE /detalles-pedido/{id}/ - Elimina un detalle
+    """
     queryset = PedidoDetalle.objects.all()
     serializer_class = PedidoDetalleSerializer
 
+
 class PedidoViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para gestionar pedidos.
+    
+    Este ViewSet maneja las operaciones CRUD para pedidos,
+    incluyendo la creación de pedidos con múltiples productos.
+    
+    Endpoints:
+        GET /pedidos/ - Lista todos los pedidos
+        POST /pedidos/ - Crea un nuevo pedido
+        GET /pedidos/{id}/ - Obtiene un pedido específico
+        PUT /pedidos/{id}/ - Actualiza un pedido
+        DELETE /pedidos/{id}/ - Elimina un pedido
+        GET /pedidos/{id}/detalles/ - Obtiene los detalles de un pedido
+        PUT /pedidos/{id}/actualizar_estado/ - Actualiza el estado de un pedido
+    """
     queryset = Pedido.objects.all()
     serializer_class = PedidoSerializer
 
     def create(self, request, *args, **kwargs):
+        """
+        Crea un nuevo pedido con sus detalles.
+        
+        Args:
+            request: Request con los datos del pedido y sus productos
+            
+        Returns:
+            Response: Pedido creado con sus detalles
+        """
         try:
-            # Crear copia mutable de los datos
             data = request.data.copy()
             print("Data PedidoViewSet: ",data)
             
@@ -270,6 +405,16 @@ class PedidoViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['get'])
     def detalles(self, request, pk=None):
+        """
+        Obtiene los detalles de un pedido específico.
+        
+        Args:
+            request: Request
+            pk: ID del pedido
+            
+        Returns:
+            Response: Lista de detalles del pedido
+        """
         pedido = self.get_object()
         detalles = pedido.detalles.all()
         serializer = PedidoDetalleSerializer(detalles, many=True)
@@ -277,6 +422,16 @@ class PedidoViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['put'])
     def actualizar_estado(self, request, pk=None):
+        """
+        Actualiza el estado de un pedido.
+        
+        Args:
+            request: Request con el nuevo estado
+            pk: ID del pedido
+            
+        Returns:
+            Response: Pedido actualizado
+        """
         pedido = self.get_object()
         nuevo_estado = request.data.get('estado_compra')
         
@@ -291,10 +446,28 @@ class PedidoViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(pedido)
         return Response(serializer.data)
 
+
 class RegistrarMovimientoView(APIView):
+    """
+    Vista para registrar movimientos internos de stock.
+    
+    Esta vista maneja la creación de pedidos internos para
+    registrar movimientos de stock entre ubicaciones.
+    
+    Endpoints:
+        POST /movimientos/ - Registra un nuevo movimiento
+    """
     def post(self, request):
+        """
+        Registra un nuevo movimiento interno de stock.
+        
+        Args:
+            request: Request con los datos del movimiento
+            
+        Returns:
+            Response: Detalles del movimiento registrado
+        """
         try:
-            # Crear copia mutable de los datos
             data = request.data.copy()
             admin_user = Usuario.objects.get(id=1)
             
