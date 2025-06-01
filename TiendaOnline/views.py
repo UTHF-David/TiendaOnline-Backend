@@ -444,7 +444,7 @@ class PedidoViewSet(viewsets.ModelViewSet):
         PUT /pedidos/{id}/actualizar_estado/ - Actualiza el estado de un pedido
     """
     # Optimización de consultas con select_related y prefetch_related
-    queryset = Pedido.objects.all().select_related('usuario').prefetch_related('detalles')
+    queryset = Pedido.objects.all()
     serializer_class = PedidoSerializer
 
     def create(self, request, *args, **kwargs):
