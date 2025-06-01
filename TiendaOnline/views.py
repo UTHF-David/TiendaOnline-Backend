@@ -432,7 +432,7 @@ class PedidoViewSet(viewsets.ModelViewSet):
     ViewSet para gestionar pedidos.
     
     Este ViewSet maneja las operaciones CRUD para pedidos,
-    incluyendo la creación de pedidos y la gestión de sus estados.
+    incluyendo la creación de pedidos con múltiples productos.
     
     Endpoints:
         GET /pedidos/ - Lista todos los pedidos
@@ -443,25 +443,32 @@ class PedidoViewSet(viewsets.ModelViewSet):
         GET /pedidos/{id}/detalles/ - Obtiene los detalles de un pedido
         PUT /pedidos/{id}/actualizar_estado/ - Actualiza el estado de un pedido
     """
-    #queryset = Pedido.objects.all()
+    # Optimización de consultas con select_related y prefetch_related
     queryset = Pedido.objects.all().select_related('usuario').prefetch_related('detalles')
     serializer_class = PedidoSerializer
 
     def create(self, request, *args, **kwargs):
         """
-        Crea un nuevo pedido.
+        Crea un nuevo pedido con múltiples productos.
         
         Args:
-            request: Request con los datos del pedido
+            request: Request con los datos del pedido y sus productos
             
         Returns:
-            Response: Pedido creado o error
+            Response: Pedido creado con sus detalles o error
         """
         try:
             # Crear una copia mutable de los datos de la request
             data = request.data.copy()
             
-            # Crear el pedido con los datos proporcionados
+            # Validar que se proporcionaron productos
+            productos = data.get('productos', [])
+            if not productos:
+                return Response({
+                    'error': 'Debe proporcionar al menos un producto'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # Crear el pedido base
             pedido = Pedido.objects.create(
                 usuario_id=data.get('usuario_id'),
                 company=data.get('compañia'),
@@ -472,14 +479,60 @@ class PedidoViewSet(viewsets.ModelViewSet):
                 zip=data.get('zip'),
                 correo=data.get('correo'),
                 telefono=data.get('telefono'),
-                estado_compra='Pagado',  # Estado inicial por defecto
+                estado_compra='Pagado',
                 desc_adicional=data.get('desc_adicional'),
-                es_movimiento_interno=False  # Por defecto no es movimiento interno
+                es_movimiento_interno=False
             )
 
-            # Serializar y devolver el pedido creado
+            detalles_creados = []
+            errores = []
+
+            # Procesar cada producto del pedido
+            for producto_data in productos:
+                try:
+                    # Obtener el producto
+                    producto = get_object_or_404(Producto, id=producto_data.get('producto_id'))
+                    cantidad = int(producto_data.get('cantidad', 1))
+
+                    # Validar stock disponible
+                    if producto.cantidad_en_stock < cantidad:
+                        errores.append(f'No hay suficiente stock para {producto.nombre}')
+                        continue
+
+                    # Crear el detalle del pedido
+                    detalle = PedidoDetalle.objects.create(
+                        pedido=pedido,
+                        producto=producto,
+                        cantidad_prod=cantidad,
+                        subtotal=Decimal(str(producto_data.get('subtotal', '0.00'))),
+                        isv=Decimal(str(producto_data.get('isv', '0.00'))),
+                        envio=Decimal(str(producto_data.get('envio', '0.00'))),
+                        total=Decimal(str(producto_data.get('total', '0.00')))
+                    )
+
+                    # Actualizar el stock
+                    producto.cantidad_en_stock -= cantidad
+                    producto.save()
+
+                    detalles_creados.append(detalle)
+
+                except Exception as e:
+                    errores.append(f'Error al procesar producto {producto_data.get("producto_id")}: {str(e)}')
+
+            # Si hubo errores, eliminar el pedido y sus detalles
+            if errores:
+                pedido.delete()
+                return Response({
+                    'error': 'Errores al procesar productos',
+                    'detalles': errores
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # Serializar y devolver el pedido con sus detalles
             serializer = self.get_serializer(pedido)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            response_data = serializer.data
+            response_data['detalles'] = PedidoDetalleSerializer(detalles_creados, many=True).data
+
+            return Response(response_data, status=status.HTTP_201_CREATED)
             
         except Exception as e:
             return Response({

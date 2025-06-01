@@ -221,9 +221,10 @@ class PedidoSerializer(serializers.ModelSerializer):
 
 class PedidoCreateSerializer(serializers.ModelSerializer):
     """
-    Serializer para la creación de pedidos.
+    Serializer para la creación de pedidos con múltiples productos.
     
-    Este serializer maneja la creación de pedidos con múltiples productos.
+    Este serializer maneja la creación de pedidos incluyendo
+    la validación de múltiples productos y sus cantidades.
     
     Campos:
         usuario: Referencia al usuario
@@ -239,15 +240,65 @@ class PedidoCreateSerializer(serializers.ModelSerializer):
         productos: Lista de productos a incluir en el pedido
         estado_compra: Estado del pedido
     """
+    # Campo para manejar múltiples productos en la creación
     productos = serializers.ListField(
         child=serializers.DictField(),
-        write_only=True
+        write_only=True,  # Solo se usa para crear, no se devuelve en la respuesta
+        required=True,
+        min_length=1,
+        error_messages={
+            'required': 'Debe proporcionar al menos un producto',
+            'min_length': 'Debe proporcionar al menos un producto'
+        }
     )
 
     class Meta:
         model = Pedido
         fields = ['usuario', 'company', 'direccion', 'pais', 'estado_pais',
                  'ciudad', 'zip', 'correo', 'telefono', 'desc_adicional', 'productos', 'estado_compra']
+
+    def validate_productos(self, value):
+        """
+        Valida la lista de productos.
+        
+        Args:
+            value (list): Lista de productos a validar
+            
+        Returns:
+            list: Lista de productos validada
+            
+        Raises:
+            ValidationError: Si algún producto no es válido
+        """
+        if not value:
+            raise serializers.ValidationError('Debe proporcionar al menos un producto')
+
+        for producto in value:
+            # Validar campos requeridos
+            if 'producto_id' not in producto:
+                raise serializers.ValidationError('Cada producto debe tener un ID')
+            if 'cantidad' not in producto:
+                raise serializers.ValidationError('Cada producto debe tener una cantidad')
+            
+            # Validar que el producto existe
+            try:
+                producto_obj = Producto.objects.get(id=producto['producto_id'])
+            except Producto.DoesNotExist:
+                raise serializers.ValidationError(f'Producto con ID {producto["producto_id"]} no existe')
+            
+            # Validar cantidad
+            try:
+                cantidad = int(producto['cantidad'])
+                if cantidad <= 0:
+                    raise serializers.ValidationError('La cantidad debe ser mayor a 0')
+                if cantidad > producto_obj.cantidad_en_stock:
+                    raise serializers.ValidationError(
+                        f'No hay suficiente stock para {producto_obj.nombre}'
+                    )
+            except ValueError:
+                raise serializers.ValidationError('La cantidad debe ser un número entero')
+
+        return value
 
 
 class UsersSerializer(serializers.ModelSerializer):
