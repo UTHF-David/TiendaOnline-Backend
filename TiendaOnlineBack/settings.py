@@ -54,10 +54,14 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',  
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
+    # Añadir el middleware de autenticación de REST Framework aquí
+    # Debe ir después de SessionMiddleware y CommonMiddleware,
+    # pero antes de CsrfViewMiddleware y Django's AuthenticationMiddleware.
+    'rest_framework.middleware.AuthenticationMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware', # Este es el de Django, déjalo aquí
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -191,9 +195,11 @@ REST_FRAMEWORK = {
 
 
 CSRF_TRUSTED_ORIGINS = [
-    'https://tlendsonline-backend-yago.onrender.com',
-    'https://sage-cannoli-55f8a1.netlify.app/',  # Reemplaza con tu URL real
-    'https://www.sandbox.paypal.com'
+    'https://tiendaonline-backend-yaoo.onrender.com', # Corregido el dominio de render
+    'https://sage-cannoli-55f8a1.netlify.app',
+    'https://www.sandbox.paypal.com',
+    'http://localhost:5173', # Añadir tu origen de desarrollo local aquí
+    'http://127.0.0.1:5173', # Considera añadir 127.0.0.1 también
 ]
 
 CSRF_COOKIE_SECURE = True    

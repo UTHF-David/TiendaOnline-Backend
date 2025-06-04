@@ -380,9 +380,3 @@ class CarritoTempSerializer(serializers.ModelSerializer):
             )
         
         return data
-
-
-
-
-
-
