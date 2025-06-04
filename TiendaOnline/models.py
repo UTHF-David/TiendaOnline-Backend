@@ -404,5 +404,102 @@ class PedidoDetalle(models.Model):
     
     ##Nuevo manejo de stock con tabla de registros temporal
 
+class CarritoTemp(models.Model):
+    """Modelo para el carrito temporal de compras"""
+    id = models.AutoField(primary_key=True)
+    usuario = models.ForeignKey(
+        Usuario,
+        on_delete=models.CASCADE,
+        related_name='carritos_temp',
+        verbose_name='Usuario'
+    )
+    producto = models.ForeignKey(
+        Producto,
+        on_delete=models.CASCADE,
+        related_name='carritos_temp',
+        verbose_name='Producto'
+    )
+    cantidad_prod = models.PositiveIntegerField(
+        validators=[MinValueValidator(1)],
+        verbose_name='Cantidad en Carrito'
+    )
+    cantidad_temp = models.PositiveIntegerField(
+        validators=[MinValueValidator(1)],
+        verbose_name='Cantidad Temporal (reservado)'
+    )
+    fecha_creacion = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='Fecha de Creación'
+    )
+    fecha_actualizacion = models.DateTimeField(
+        auto_now=True,
+        verbose_name='Fecha de Actualización'
+    )
+    expirado = models.BooleanField(
+        default=False,
+        verbose_name='¿Expirado?'
+    )
+
+    class Meta:
+        verbose_name = 'Carrito Temporal'
+        verbose_name_plural = 'Carritos Temporales'
+        unique_together = ['usuario', 'producto']
+        ordering = ['-fecha_actualizacion']
+
+    def save(self, *args, **kwargs):
+        """Maneja la lógica de reserva de stock al guardar"""
+        # Si es un nuevo registro
+        if not self.pk:
+            # Verificar stock disponible
+            if self.producto.cantidad_en_stock < self.cantidad_prod:
+                raise ValidationError('No hay suficiente stock disponible')
+            
+            # Reservar el stock temporalmente
+            self.cantidad_temp = self.cantidad_prod
+            self.producto.cantidad_en_stock -= self.cantidad_temp
+            self.producto.save()
+        else:
+            # Si es una actualización
+            old_instance = CarritoTemp.objects.get(pk=self.pk)
+            diferencia = self.cantidad_prod - old_instance.cantidad_prod
+            
+            if diferencia > 0:
+                # Si se aumenta la cantidad
+                if self.producto.cantidad_en_stock < diferencia:
+                    raise ValidationError('No hay suficiente stock disponible')
+                self.producto.cantidad_en_stock -= diferencia
+                self.cantidad_temp = self.cantidad_prod
+            elif diferencia < 0:
+                # Si se reduce la cantidad
+                self.producto.cantidad_en_stock += abs(diferencia)
+                self.cantidad_temp = self.cantidad_prod
+            
+            self.producto.save()
+        
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        """Devuelve el stock al eliminar el registro"""
+        if not self.expirado:
+            self.producto.cantidad_en_stock += self.cantidad_temp
+            self.producto.save()
+        super().delete(*args, **kwargs)
+
+    def __str__(self):
+        return f"Carrito de {self.usuario.nombre_cliente} - {self.producto.nombre}"
+
+    def verificar_expiracion(self):
+        """Verifica si el carrito ha expirado (24 horas)"""
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        if not self.expirado and timezone.now() - self.fecha_actualizacion > timedelta(hours=24):
+            self.expirado = True
+            self.producto.cantidad_en_stock += self.cantidad_temp
+            self.producto.save()
+            self.save()
+            return True
+        return False
+
 
 

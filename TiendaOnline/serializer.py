@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Producto, Pedido, PedidoDetalle, Usuario
+from .models import Producto, Pedido, PedidoDetalle, Usuario, CarritoTemp
 from django.contrib.auth.models import User
 from decimal import Decimal # Importar Decimal si se usa en algún serializer (aunque en PedidoDetalle.save es donde se usa principalmente)
 
@@ -316,6 +316,70 @@ class UsersSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['username', 'first_name', 'last_name', 'email']
+
+
+class CarritoTempSerializer(serializers.ModelSerializer):
+    """
+    Serializer para el modelo CarritoTemp.
+    
+    Este serializer maneja la serialización del carrito temporal,
+    incluyendo información adicional del producto y usuario.
+    
+    Campos:
+        id: Identificador del carrito
+        usuario: Referencia al usuario
+        usuario_nombre: Nombre del usuario (solo lectura)
+        producto: Referencia al producto
+        producto_nombre: Nombre del producto (solo lectura)
+        producto_precio: Precio del producto (solo lectura)
+        cantidad_prod: Cantidad en el carrito
+        cantidad_temp: Cantidad temporal reservada
+        fecha_creacion: Fecha de creación
+        fecha_actualizacion: Fecha de última actualización
+        expirado: Indica si el carrito ha expirado
+    """
+    usuario_nombre = serializers.CharField(source='usuario.nombre_cliente', read_only=True)
+    producto_nombre = serializers.CharField(source='producto.nombre', read_only=True)
+    producto_precio = serializers.DecimalField(source='producto.precio', max_digits=10, decimal_places=2, read_only=True)
+    stock_disponible = serializers.IntegerField(source='producto.cantidad_en_stock', read_only=True)
+
+    class Meta:
+        model = CarritoTemp
+        fields = ['id', 'usuario', 'usuario_nombre', 'producto', 'producto_nombre',
+                 'producto_precio', 'cantidad_prod', 'cantidad_temp', 'fecha_creacion',
+                 'fecha_actualizacion', 'expirado', 'stock_disponible']
+        read_only_fields = ['id', 'cantidad_temp', 'fecha_creacion', 'fecha_actualizacion',
+                           'expirado', 'stock_disponible']
+
+    def validate(self, data):
+        """
+        Valida los datos del carrito temporal.
+        
+        Args:
+            data (dict): Datos a validar
+            
+        Returns:
+            dict: Datos validados
+            
+        Raises:
+            ValidationError: Si la cantidad excede el stock disponible
+        """
+        producto = data.get('producto')
+        cantidad = data.get('cantidad_prod', 0)
+        
+        # Si es una actualización, obtener la instancia actual
+        if self.instance:
+            cantidad_actual = self.instance.cantidad_prod
+            stock_disponible = producto.cantidad_en_stock + cantidad_actual
+        else:
+            stock_disponible = producto.cantidad_en_stock
+        
+        if cantidad > stock_disponible:
+            raise serializers.ValidationError(
+                f'La cantidad excede el stock disponible ({stock_disponible} unidades)'
+            )
+        
+        return data
 
 
 

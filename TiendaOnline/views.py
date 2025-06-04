@@ -1,11 +1,11 @@
 from rest_framework.parsers import MultiPartParser, FormParser
-from .serializer import ProductoSerializer, PedidoSerializer, PedidoDetalleSerializer, UsuarioSerializer
+from .serializer import ProductoSerializer, PedidoSerializer, PedidoDetalleSerializer, UsuarioSerializer, CarritoTempSerializer
 from django.shortcuts import get_object_or_404
 from rest_framework.decorators import action, api_view, permission_classes, authentication_classes
 from rest_framework.response import Response
 from rest_framework import viewsets, status 
 from rest_framework.permissions import AllowAny, IsAuthenticated
-from .models import Producto, Pedido, PedidoDetalle, Usuario
+from .models import Producto, Pedido, PedidoDetalle, Usuario, CarritoTemp
 from rest_framework.authtoken.models import Token
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.views import APIView
@@ -697,4 +697,74 @@ class RegistrarMovimientoView(APIView):
             return Response({'error': 'Producto no encontrado'}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class CarritoTempViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para gestionar el carrito temporal de compras.
+    
+    Este ViewSet maneja las operaciones CRUD para el carrito temporal,
+    incluyendo la verificación de expiración y el manejo de stock.
+    
+    Endpoints:
+        GET /carrito/ - Lista los productos en el carrito del usuario
+        POST /carrito/ - Agrega un producto al carrito
+        GET /carrito/{id}/ - Obtiene un producto específico del carrito
+        PUT /carrito/{id}/ - Actualiza la cantidad de un producto
+        DELETE /carrito/{id}/ - Elimina un producto del carrito
+        GET /carrito/verificar-expiracion/ - Verifica productos expirados
+    """
+    serializer_class = CarritoTempSerializer
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [TokenAuthentication]
+
+    def get_queryset(self):
+        """Filtra los carritos por usuario actual"""
+        return CarritoTemp.objects.filter(usuario=self.request.user)
+
+    def perform_create(self, serializer):
+        """Crea un nuevo registro en el carrito"""
+        serializer.save(usuario=self.request.user)
+
+    @action(detail=False, methods=['get'])
+    def verificar_expiracion(self, request):
+        """
+        Verifica y actualiza los productos expirados en el carrito.
+        
+        Returns:
+            Response: Lista de productos expirados
+        """
+        carritos = self.get_queryset()
+        expirados = []
+        
+        for carrito in carritos:
+            if carrito.verificar_expiracion():
+                expirados.append(carrito)
+        
+        if expirados:
+            serializer = self.get_serializer(expirados, many=True)
+            return Response({
+                'message': 'Se encontraron productos expirados',
+                'productos_expirados': serializer.data
+            })
+        
+        return Response({
+            'message': 'No hay productos expirados'
+        })
+
+    @action(detail=False, methods=['delete'])
+    def limpiar_carrito(self, request):
+        """
+        Elimina todos los productos del carrito del usuario.
+        
+        Returns:
+            Response: Confirmación de limpieza
+        """
+        carritos = self.get_queryset()
+        count = carritos.count()
+        carritos.delete()
+        
+        return Response({
+            'message': f'Se eliminaron {count} productos del carrito'
+        })
         
