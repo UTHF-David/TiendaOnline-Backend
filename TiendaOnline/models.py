@@ -493,7 +493,7 @@ class CarritoTemp(models.Model):
         from django.utils import timezone
         from datetime import timedelta
         
-        if not self.expirado and timezone.now() - self.fecha_actualizacion > timedelta(hours=24):
+        if not self.expirado and timezone.now() - self.fecha_actualizacion > timedelta(seconds=60):
             self.expirado = True
             self.producto.cantidad_en_stock += self.cantidad_temp
             self.producto.save()
