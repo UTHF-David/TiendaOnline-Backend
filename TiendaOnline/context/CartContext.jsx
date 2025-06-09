@@ -12,6 +12,7 @@ export function CartProvider({ children }) {
     const timerRef = useRef(null);
     const INACTIVITY_TIMEOUT = 1 * 60 * 1000; // 1 minuto en milisegundos
     const checkIntervalRef = useRef(null);
+    const lastRemovedIndexRef = useRef(-1); // Para llevar el control del último producto removido
 
     // Función para reiniciar el temporizador
     const resetTimer = () => {
@@ -19,25 +20,33 @@ export function CartProvider({ children }) {
             clearTimeout(timerRef.current);
         }
         timerRef.current = setTimeout(handleInactivity, INACTIVITY_TIMEOUT);
+        lastRemovedIndexRef.current = -1; // Resetear el índice cuando hay actividad
     };
 
     // Función para manejar la inactividad
     const handleInactivity = async () => {
         if (cart.length > 0) {
             try {
-                // Verificar expiración de productos
+                // Obtener el siguiente índice a procesar
+                const nextIndex = (lastRemovedIndexRef.current + 1) % cart.length;
+                const itemToRemove = cart[nextIndex];
+
+                // Verificar expiración del producto específico
                 const { productos_expirados } = await verificarExpiracionCarrito();
                 
                 if (productos_expirados && productos_expirados.length > 0) {
                     // Actualizar el carrito local
                     await loadCart();
                     
-                    // Mostrar mensaje de productos expirados
+                    // Mostrar mensaje de producto expirado
                     Swal.fire({
                         icon: 'warning',
-                        title: 'Productos expirados',
-                        text: 'Algunos productos en tu carrito han expirado y han sido removidos debido a inactividad.',
+                        title: 'Producto expirado',
+                        text: `El producto "${itemToRemove.producto_nombre}" ha expirado y ha sido removido del carrito.`,
                     });
+
+                    // Actualizar el índice del último producto removido
+                    lastRemovedIndexRef.current = nextIndex;
                 }
             } catch (error) {
                 console.error('Error al verificar expiración:', error);
@@ -54,9 +63,15 @@ export function CartProvider({ children }) {
         checkIntervalRef.current = setInterval(async () => {
             if (cart.length > 0) {
                 try {
+                    // Obtener el siguiente índice a procesar
+                    const nextIndex = (lastRemovedIndexRef.current + 1) % cart.length;
+                    const itemToRemove = cart[nextIndex];
+
                     const { productos_expirados } = await verificarExpiracionCarrito();
                     if (productos_expirados && productos_expirados.length > 0) {
                         await loadCart();
+                        // Actualizar el índice del último producto removido
+                        lastRemovedIndexRef.current = nextIndex;
                     }
                 } catch (error) {
                     console.error('Error en verificación periódica:', error);
@@ -124,6 +139,7 @@ export function CartProvider({ children }) {
             
             await addToCarrito(product.id, quantity);
             await loadCart(); // Recargar el carrito después de agregar
+            lastRemovedIndexRef.current = -1; // Resetear el índice al agregar productos
         } catch (error) {
             console.error('Error al agregar al carrito:', error);
             if (error.message.includes('Sesión expirada') || error.response?.status === 401 || error.response?.status === 403) {
@@ -144,6 +160,7 @@ export function CartProvider({ children }) {
             
             await updateCarritoItem(id, quantity);
             await loadCart();
+            lastRemovedIndexRef.current = -1; // Resetear el índice al actualizar cantidades
         } catch (error) {
             console.error('Error al actualizar cantidad:', error);
             if (error.response?.status === 401 || error.response?.status === 403) {
@@ -164,6 +181,7 @@ export function CartProvider({ children }) {
             
             await removeFromCarrito(id);
             await loadCart();
+            lastRemovedIndexRef.current = -1; // Resetear el índice al eliminar manualmente
         } catch (error) {
             console.error('Error al eliminar del carrito:', error);
             if (error.response?.status === 401 || error.response?.status === 403) {
@@ -179,6 +197,7 @@ export function CartProvider({ children }) {
         try {
             await limpiarCarrito();
             setCart([]);
+            lastRemovedIndexRef.current = -1; // Resetear el índice al limpiar el carrito
             console.log('Carrito limpiado exitosamente');
         } catch (error) {
             console.error('Error al limpiar el carrito:', error);
