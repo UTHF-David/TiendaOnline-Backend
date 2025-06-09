@@ -734,12 +734,7 @@ class CarritoTempViewSet(viewsets.ModelViewSet):
         Returns:
             Response: Lista de productos expirados
         """
-        carritos = self.get_queryset()
-        expirados = []
-        
-        for carrito in carritos:
-            if carrito.verificar_expiracion():
-                expirados.append(carrito)
+        expirados = CarritoTemp.verificar_expiracion_carrito(request.user)
         
         if expirados:
             serializer = self.get_serializer(expirados, many=True)

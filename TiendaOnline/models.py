@@ -439,6 +439,10 @@ class CarritoTemp(models.Model):
         default=False,
         verbose_name='¿Expirado?'
     )
+    ultima_verificacion = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='Última Verificación'
+    )
 
     class Meta:
         verbose_name = 'Carrito Temporal'
@@ -489,18 +493,42 @@ class CarritoTemp(models.Model):
         return f"Carrito de {self.usuario.nombre_cliente} - {self.producto.nombre}"
 
     def verificar_expiracion(self):
-        """Verifica si el carrito ha expirado (24 horas)"""
+        """Verifica si el carrito ha expirado (60 segundos) y maneja la expiración secuencial"""
         from django.utils import timezone
         from datetime import timedelta
         
-        if not self.expirado and timezone.now() - self.fecha_actualizacion > timedelta(seconds=60):
-            self.expirado = True
-            self.producto.cantidad_en_stock += self.cantidad_temp            
-            self.cantidad_temp = 0
-            self.producto.save()
+        # Verificar si han pasado 60 segundos desde la última verificación
+        if not self.expirado and timezone.now() - self.ultima_verificacion > timedelta(seconds=60):
+            # Si la cantidad es mayor a 1, reducir en 1
+            if self.cantidad_prod > 1:
+                self.cantidad_prod -= 1
+                self.producto.cantidad_en_stock += 1
+                self.producto.save()
+            else:
+                # Si la cantidad es 1, marcar como expirado
+                self.expirado = True
+                self.cantidad_prod = 0
+                self.producto.cantidad_en_stock += self.cantidad_temp
+                self.producto.save()
+            
+            # Actualizar la última verificación
+            self.ultima_verificacion = timezone.now()
             self.save()
             return True
+            
         return False
+
+    @classmethod
+    def verificar_expiracion_carrito(cls, usuario):
+        """Verifica la expiración de todos los productos en el carrito de un usuario"""
+        carritos = cls.objects.filter(usuario=usuario, expirado=False)
+        expirados = []
+        
+        for carrito in carritos:
+            if carrito.verificar_expiracion():
+                expirados.append(carrito)
+        
+        return expirados
 
 
 
