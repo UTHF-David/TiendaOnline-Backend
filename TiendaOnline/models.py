@@ -495,7 +495,8 @@ class CarritoTemp(models.Model):
         
         if not self.expirado and timezone.now() - self.fecha_actualizacion > timedelta(seconds=60):
             self.expirado = True
-            self.producto.cantidad_en_stock += self.cantidad_temp
+            self.producto.cantidad_en_stock += self.cantidad_temp            
+            self.cantidad_temp = 0
             self.producto.save()
             self.save()
             return True
