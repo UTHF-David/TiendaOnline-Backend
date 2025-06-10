@@ -499,25 +499,27 @@ class CarritoTemp(models.Model):
         from datetime import timedelta
         
         # Verificar si han pasado 60 segundos desde la última verificación
-        if not self.expirado and timezone.now() - self.ultima_verificacion > timedelta(seconds=60):
+        if not self.expirado:
             # Si la cantidad es mayor a 1, reducir en 1
-            if self.cantidad_prod > 1:
-                self.cantidad_prod -= 1
+            if self.cantidad_temp > 0:
+                self.cantidad_temp = 0                
+                self.expirado=True
+                self.producto.save()
+            #if self.cantidad_prod > self.producto.cantidad_en_stock:
+            #   self.cantidad_prod = self.producto.cantidad_en_stock
                 # Solo devolver 1 unidad al stock
-                self.producto.cantidad_en_stock += 1
-                self.cantidad_temp -= 1
-                self.producto.save()
-            else:
-                # Si la cantidad es 1, marcar como expirado
-                self.expirado = True
-                self.cantidad_prod = 0
-                # Solo devolver la cantidad temporal restante
-                self.producto.cantidad_en_stock += self.cantidad_temp
-                self.cantidad_temp = 0
-                self.producto.save()
+                #self.producto.cantidad_en_stock += 1            
+            # else:
+            #     # Si la cantidad es 1, marcar como expirado
+            #     self.expirado = True
+            #     self.cantidd_prod = 0
+            #     # Solo devolver la cantidad temporal restante
+            #     self.producto.cantidad_en_stock += self.cantidad_temp
+            #     self.cantidad_temp = 0
+            #     self.producto.save()
             
-            # Actualizar la última verificación
-            self.ultima_verificacion = timezone.now()
+            # # Actualizar la última verificación
+            # self.ultima_verificacion = timezone.now()
             self.save()
             return True
             

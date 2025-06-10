@@ -722,6 +722,39 @@ class CarritoTempViewSet(viewsets.ModelViewSet):
         """Filtra los carritos por usuario actual"""
         return CarritoTemp.objects.filter(usuario=self.request.user)
 
+    def create(self, request, *args, **kwargs):
+        """
+        Crea o actualiza un item en el carrito.
+        Si el producto ya existe en el carrito del usuario, actualiza su cantidad.
+        """
+        try:
+            # Buscar si ya existe el producto en el carrito del usuario
+            carrito_existente = CarritoTemp.objects.filter(
+                usuario=request.user,
+                producto_id=request.data.get('producto')
+            ).first()
+
+            if carrito_existente:
+                # Si existe, actualizar la cantidad
+                cantidad_actual = carrito_existente.cantidad_prod
+                nueva_cantidad = int(request.data.get('cantidad_prod', 1))
+                carrito_existente.cantidad_prod = cantidad_actual + nueva_cantidad
+                carrito_existente.save()
+                serializer = self.get_serializer(carrito_existente)
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            else:
+                # Si no existe, crear nuevo registro
+                serializer = self.get_serializer(data=request.data)
+                serializer.is_valid(raise_exception=True)
+                self.perform_create(serializer)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
     def perform_create(self, serializer):
         """Crea un nuevo registro en el carrito"""
         serializer.save(usuario=self.request.user)

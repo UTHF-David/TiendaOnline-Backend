@@ -13,8 +13,7 @@ def verificar_carritos_expirados():
     try:
         # Obtener todos los carritos no expirados que necesitan verificación
         carritos = CarritoTemp.objects.filter(
-            Q(expirado=False) & 
-            Q(ultima_verificacion__lt=timezone.now() - timezone.timedelta(seconds=60))
+            Q(expirado=False) 
         ).select_related('producto')  # Optimizar consultas relacionadas
         
         if not carritos.exists():
