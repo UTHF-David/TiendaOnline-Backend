@@ -1,5 +1,6 @@
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
+from apscheduler.events import EVENT_JOB_ERROR
 from django.conf import settings
 from .tasks import verificar_carritos_expirados
 import logging
@@ -26,7 +27,7 @@ def start_scheduler():
         # Configurar el manejo de errores
         scheduler.add_listener(
             lambda event: logger.error(f"Error en el scheduler: {event.exception}"),
-            mask=BackgroundScheduler.EVENT_JOB_ERROR
+            mask=EVENT_JOB_ERROR
         )
         
         scheduler.start()
