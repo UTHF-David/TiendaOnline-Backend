@@ -502,13 +502,17 @@ class CarritoTemp(models.Model):
             # Si la cantidad es mayor a 1, reducir en 1
             if self.cantidad_prod > 1:
                 self.cantidad_prod -= 1
+                # Solo devolver 1 unidad al stock
                 self.producto.cantidad_en_stock += 1
+                self.cantidad_temp -= 1
                 self.producto.save()
             else:
                 # Si la cantidad es 1, marcar como expirado
                 self.expirado = True
                 self.cantidad_prod = 0
+                # Solo devolver la cantidad temporal restante
                 self.producto.cantidad_en_stock += self.cantidad_temp
+                self.cantidad_temp = 0
                 self.producto.save()
             
             # Actualizar la última verificación

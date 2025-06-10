@@ -45,10 +45,8 @@ INSTALLED_APPS = [
     'corsheaders',
     'TiendaOnline',
     'coreapi',    
-    'rest_framework.authtoken'
-    
-
-    
+    'rest_framework.authtoken',
+    'django_apscheduler',
 ]
 
 MIDDLEWARE = [
@@ -200,3 +198,13 @@ CSRF_TRUSTED_ORIGINS = [
 
 CSRF_COOKIE_SECURE = True    
 SESSION_COOKIE_SECURE = True
+
+# Configuración de APScheduler
+SCHEDULER_CONFIG = {
+    "apscheduler.jobstores.default": {
+        "class": "django_apscheduler.jobstores:DjangoJobStore"
+    },
+    'apscheduler.executors.processpool': {
+        "type": "threadpool"
+    },
+}
