@@ -7,7 +7,7 @@ Pillow==10.3.0
 coreapi==2.3.3
 cloudinary==1.32.0
 django-cloudinary-storage==0.3.0
-
+django_apscheduler==0.7.0
 # Dependencias recomendadas para producción (añade estas)
 waitress==2.1.2  # Servidor ligero para producción
 python-dotenv==1.0.0  # Para manejar variables de entorno
