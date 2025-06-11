@@ -500,22 +500,30 @@ class PedidoViewSet(viewsets.ModelViewSet):
             # Procesar cada producto del pedido
             for producto_data in productos:
                 try:
-                    # Validar datos requeridos del producto
-                    if 'producto_id' not in producto_data:
-                        errores.append('Cada producto debe tener un ID')
+                    # Obtener el ID del producto (puede venir como 'id' o 'producto_id')
+                    producto_id = producto_data.get('producto_id') or producto_data.get('id')
+                    if not producto_id:
+                        errores.append('Cada producto debe tener un ID (producto_id o id)')
                         continue
-                    if 'cantidad' not in producto_data:
+
+                    # Validar cantidad
+                    cantidad = producto_data.get('cantidad')
+                    if not cantidad:
                         errores.append('Cada producto debe tener una cantidad')
+                        continue
+
+                    try:
+                        cantidad = int(cantidad)
+                    except ValueError:
+                        errores.append(f'La cantidad debe ser un número entero para el producto {producto_id}')
                         continue
 
                     # Obtener el producto
                     try:
-                        producto = Producto.objects.get(id=producto_data.get('producto_id'))
+                        producto = Producto.objects.get(id=producto_id)
                     except Producto.DoesNotExist:
-                        errores.append(f'Producto con ID {producto_data.get("producto_id")} no encontrado')
+                        errores.append(f'Producto con ID {producto_id} no encontrado')
                         continue
-
-                    cantidad = int(producto_data.get('cantidad', 1))
 
                     # Validar stock disponible
                     if producto.cantidad_en_stock < cantidad:
@@ -542,7 +550,7 @@ class PedidoViewSet(viewsets.ModelViewSet):
                 except ValueError as e:
                     errores.append(f'Error en los datos del producto: {str(e)}')
                 except Exception as e:
-                    errores.append(f'Error al procesar producto {producto_data.get("producto_id")}: {str(e)}')
+                    errores.append(f'Error al procesar producto {producto_id}: {str(e)}')
 
             # Si hubo errores, eliminar el pedido y sus detalles
             if errores:
