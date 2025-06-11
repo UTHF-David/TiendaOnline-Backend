@@ -702,17 +702,6 @@ class RegistrarMovimientoView(APIView):
 class CarritoTempViewSet(viewsets.ModelViewSet):
     """
     ViewSet para gestionar el carrito temporal de compras.
-    
-    Este ViewSet maneja las operaciones CRUD para el carrito temporal,
-    incluyendo la verificación de expiración y el manejo de stock.
-    
-    Endpoints:
-        GET /carrito/ - Lista los productos en el carrito del usuario
-        POST /carrito/ - Agrega un producto al carrito
-        GET /carrito/{id}/ - Obtiene un producto específico del carrito
-        PUT /carrito/{id}/ - Actualiza la cantidad de un producto
-        DELETE /carrito/{id}/ - Elimina un producto del carrito
-        GET /carrito/verificar-expiracion/ - Verifica productos expirados
     """
     serializer_class = CarritoTempSerializer
     permission_classes = [IsAuthenticated]
@@ -755,6 +744,34 @@ class CarritoTempViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+    def update(self, request, *args, **kwargs):
+        """
+        Actualiza la cantidad de un producto en el carrito.
+        """
+        try:
+            instance = self.get_object()
+            
+            # Obtener la nueva cantidad del request
+            nueva_cantidad = request.data.get('cantidad_prod')
+            if nueva_cantidad is None:
+                return Response(
+                    {'error': 'La cantidad es requerida'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Actualizar la cantidad
+            instance.cantidad_prod = nueva_cantidad
+            instance.save()
+            
+            serializer = self.get_serializer(instance)
+            return Response(serializer.data)
+            
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
     def perform_create(self, serializer):
         """Crea un nuevo registro en el carrito"""
         serializer.save(usuario=self.request.user)
@@ -763,9 +780,6 @@ class CarritoTempViewSet(viewsets.ModelViewSet):
     def verificar_expiracion(self, request):
         """
         Verifica y actualiza los productos expirados en el carrito.
-        
-        Returns:
-            Response: Lista de productos expirados
         """
         expirados = CarritoTemp.verificar_expiracion_carrito(request.user)
         
@@ -784,9 +798,6 @@ class CarritoTempViewSet(viewsets.ModelViewSet):
     def limpiar_carrito(self, request):
         """
         Elimina todos los productos del carrito del usuario.
-        
-        Returns:
-            Response: Confirmación de limpieza
         """
         carritos = self.get_queryset()
         count = carritos.count()
