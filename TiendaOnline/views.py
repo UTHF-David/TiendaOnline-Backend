@@ -12,7 +12,7 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
 import base64
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 
 class ProductoViewSet(viewsets.ModelViewSet):
@@ -454,12 +454,26 @@ class PedidoViewSet(viewsets.ModelViewSet):
             # Crear una copia mutable de los datos de la request
             data = request.data.copy()
             
+            # Validar que los datos son un diccionario
+            if not isinstance(data, dict):
+                return Response({
+                    'error': 'Formato de datos inválido',
+                    'detalles': 'Los datos deben ser enviados como un objeto JSON'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
             # Validar que se proporcionaron productos
             productos = data.get('productos', [])
             if not productos:
                 return Response({
                     'error': 'Debe proporcionar al menos un producto',
                     'detalles': 'El campo productos es requerido y debe contener al menos un producto'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # Validar que productos es una lista
+            if not isinstance(productos, list):
+                return Response({
+                    'error': 'Formato de productos inválido',
+                    'detalles': 'El campo productos debe ser una lista de productos'
                 }, status=status.HTTP_400_BAD_REQUEST)
 
             # Validar que el usuario existe
@@ -500,6 +514,11 @@ class PedidoViewSet(viewsets.ModelViewSet):
             # Procesar cada producto del pedido
             for producto_data in productos:
                 try:
+                    # Validar que producto_data es un diccionario
+                    if not isinstance(producto_data, dict):
+                        errores.append(f'Datos de producto inválidos: {producto_data}')
+                        continue
+
                     # Obtener el ID del producto (puede venir como 'id' o 'producto_id')
                     producto_id = producto_data.get('producto_id') or producto_data.get('id')
                     if not producto_id:
@@ -514,7 +533,7 @@ class PedidoViewSet(viewsets.ModelViewSet):
 
                     try:
                         cantidad = int(cantidad)
-                    except ValueError:
+                    except (ValueError, TypeError):
                         errores.append(f'La cantidad del producto {producto_id} debe ser un número entero')
                         continue
 
@@ -530,15 +549,25 @@ class PedidoViewSet(viewsets.ModelViewSet):
                         errores.append(f'No hay suficiente stock para {producto.nombre} (disponible: {producto.cantidad_en_stock})')
                         continue
 
+                    # Validar y convertir valores monetarios
+                    try:
+                        subtotal = Decimal(str(producto_data.get('subtotal', '0.00')))
+                        isv = Decimal(str(producto_data.get('isv', '0.00')))
+                        envio = Decimal(str(producto_data.get('envio', '0.00')))
+                        total = Decimal(str(producto_data.get('total', '0.00')))
+                    except (ValueError, TypeError, InvalidOperation) as e:
+                        errores.append(f'Error en los valores monetarios del producto {producto_id}: {str(e)}')
+                        continue
+
                     # Crear el detalle del pedido
                     detalle = PedidoDetalle.objects.create(
                         pedido=pedido,
                         producto=producto,
                         cantidad_prod=cantidad,
-                        subtotal=Decimal(str(producto_data.get('subtotal', '0.00'))),
-                        isv=Decimal(str(producto_data.get('isv', '0.00'))),
-                        envio=Decimal(str(producto_data.get('envio', '0.00'))),
-                        total=Decimal(str(producto_data.get('total', '0.00')))
+                        subtotal=subtotal,
+                        isv=isv,
+                        envio=envio,
+                        total=total
                     )
 
                     # Actualizar el stock
@@ -549,8 +578,8 @@ class PedidoViewSet(viewsets.ModelViewSet):
 
                 except Exception as e:
                     # Usar el ID del producto si está disponible, o un mensaje genérico
-                    producto_id = producto_data.get('producto_id') or producto_data.get('id')
-                    mensaje_error = f'Error al procesar producto {producto_id}: {str(e)}' if producto_id else f'Error al procesar producto: {str(e)}'
+                    producto_id = producto_data.get('producto_id') if isinstance(producto_data, dict) else 'desconocido'
+                    mensaje_error = f'Error al procesar producto {producto_id}: {str(e)}'
                     errores.append(mensaje_error)
 
             # Si hubo errores, eliminar el pedido y sus detalles
