@@ -443,19 +443,12 @@ class PedidoViewSet(viewsets.ModelViewSet):
         GET /pedidos/{id}/detalles/ - Obtiene los detalles de un pedido
         PUT /pedidos/{id}/actualizar_estado/ - Actualiza el estado de un pedido
     """
-    # Optimización de consultas con select_related y prefetch_related
     queryset = Pedido.objects.all().select_related('usuario').prefetch_related('detalles__producto')    
     serializer_class = PedidoSerializer
 
     def create(self, request, *args, **kwargs):
         """
         Crea un nuevo pedido con múltiples productos.
-        
-        Args:
-            request: Request con los datos del pedido y sus productos
-            
-        Returns:
-            Response: Pedido creado con sus detalles o error
         """
         try:
             # Crear una copia mutable de los datos de la request
@@ -465,22 +458,39 @@ class PedidoViewSet(viewsets.ModelViewSet):
             productos = data.get('productos', [])
             if not productos:
                 return Response({
-                    'error': 'Debe proporcionar al menos un producto'
+                    'error': 'Debe proporcionar al menos un producto',
+                    'detalles': 'El campo productos es requerido y debe contener al menos un producto'
                 }, status=status.HTTP_400_BAD_REQUEST)
+
+            # Validar que el usuario existe
+            usuario_id = data.get('usuario_id')
+            if not usuario_id:
+                return Response({
+                    'error': 'El ID del usuario es requerido',
+                    'detalles': 'El campo usuario_id es requerido'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            try:
+                usuario = Usuario.objects.get(id=usuario_id)
+            except Usuario.DoesNotExist:
+                return Response({
+                    'error': 'Usuario no encontrado',
+                    'detalles': f'No existe un usuario con el ID {usuario_id}'
+                }, status=status.HTTP_404_NOT_FOUND)
 
             # Crear el pedido base
             pedido = Pedido.objects.create(
-                usuario_id=data.get('usuario_id'),
-                company=data.get('compañia'),
-                direccion=data.get('direccion'),
-                pais=data.get('pais'),
-                estado_pais=data.get('estado_pais'),
-                ciudad=data.get('ciudad'),
-                zip=data.get('zip'),
-                correo=data.get('correo'),
-                telefono=data.get('telefono'),
+                usuario=usuario,
+                company=data.get('compañia', ''),
+                direccion=data.get('direccion', ''),
+                pais=data.get('pais', ''),
+                estado_pais=data.get('estado_pais', ''),
+                ciudad=data.get('ciudad', ''),
+                zip=data.get('zip', ''),
+                correo=data.get('correo', ''),
+                telefono=data.get('telefono', ''),
                 estado_compra='Pagado',
-                desc_adicional=data.get('desc_adicional'),
+                desc_adicional=data.get('desc_adicional', ''),
                 es_movimiento_interno=False
             )
 
@@ -490,13 +500,26 @@ class PedidoViewSet(viewsets.ModelViewSet):
             # Procesar cada producto del pedido
             for producto_data in productos:
                 try:
+                    # Validar datos requeridos del producto
+                    if 'producto_id' not in producto_data:
+                        errores.append('Cada producto debe tener un ID')
+                        continue
+                    if 'cantidad' not in producto_data:
+                        errores.append('Cada producto debe tener una cantidad')
+                        continue
+
                     # Obtener el producto
-                    producto = get_object_or_404(Producto, id=producto_data.get('producto_id'))
+                    try:
+                        producto = Producto.objects.get(id=producto_data.get('producto_id'))
+                    except Producto.DoesNotExist:
+                        errores.append(f'Producto con ID {producto_data.get("producto_id")} no encontrado')
+                        continue
+
                     cantidad = int(producto_data.get('cantidad', 1))
 
                     # Validar stock disponible
                     if producto.cantidad_en_stock < cantidad:
-                        errores.append(f'No hay suficiente stock para {producto.nombre}')
+                        errores.append(f'No hay suficiente stock para {producto.nombre} (disponible: {producto.cantidad_en_stock})')
                         continue
 
                     # Crear el detalle del pedido
@@ -516,6 +539,8 @@ class PedidoViewSet(viewsets.ModelViewSet):
 
                     detalles_creados.append(detalle)
 
+                except ValueError as e:
+                    errores.append(f'Error en los datos del producto: {str(e)}')
                 except Exception as e:
                     errores.append(f'Error al procesar producto {producto_data.get("producto_id")}: {str(e)}')
 
@@ -536,7 +561,8 @@ class PedidoViewSet(viewsets.ModelViewSet):
             
         except Exception as e:
             return Response({
-                'error': str(e)
+                'error': f'Error al crear el pedido: {str(e)}',
+                'detalles': 'Ocurrió un error inesperado al procesar la solicitud'
             }, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=['get'])
@@ -702,6 +728,17 @@ class RegistrarMovimientoView(APIView):
 class CarritoTempViewSet(viewsets.ModelViewSet):
     """
     ViewSet para gestionar el carrito temporal de compras.
+    
+    Este ViewSet maneja las operaciones CRUD para el carrito temporal,
+    incluyendo la verificación de expiración y el manejo de stock.
+    
+    Endpoints:
+        GET /carrito/ - Lista los productos en el carrito del usuario
+        POST /carrito/ - Agrega un producto al carrito
+        GET /carrito/{id}/ - Obtiene un producto específico del carrito
+        PUT /carrito/{id}/ - Actualiza la cantidad de un producto
+        DELETE /carrito/{id}/ - Elimina un producto del carrito
+        GET /carrito/verificar-expiracion/ - Verifica productos expirados
     """
     serializer_class = CarritoTempSerializer
     permission_classes = [IsAuthenticated]
@@ -744,34 +781,6 @@ class CarritoTempViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-    def update(self, request, *args, **kwargs):
-        """
-        Actualiza la cantidad de un producto en el carrito.
-        """
-        try:
-            instance = self.get_object()
-            
-            # Obtener la nueva cantidad del request
-            nueva_cantidad = request.data.get('cantidad_prod')
-            if nueva_cantidad is None:
-                return Response(
-                    {'error': 'La cantidad es requerida'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            
-            # Actualizar la cantidad
-            instance.cantidad_prod = nueva_cantidad
-            instance.save()
-            
-            serializer = self.get_serializer(instance)
-            return Response(serializer.data)
-            
-        except Exception as e:
-            return Response(
-                {'error': str(e)},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
     def perform_create(self, serializer):
         """Crea un nuevo registro en el carrito"""
         serializer.save(usuario=self.request.user)
@@ -780,6 +789,9 @@ class CarritoTempViewSet(viewsets.ModelViewSet):
     def verificar_expiracion(self, request):
         """
         Verifica y actualiza los productos expirados en el carrito.
+        
+        Returns:
+            Response: Lista de productos expirados
         """
         expirados = CarritoTemp.verificar_expiracion_carrito(request.user)
         
