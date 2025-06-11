@@ -509,13 +509,13 @@ class PedidoViewSet(viewsets.ModelViewSet):
                     # Validar cantidad
                     cantidad = producto_data.get('cantidad')
                     if not cantidad:
-                        errores.append('Cada producto debe tener una cantidad')
+                        errores.append(f'El producto {producto_id} debe tener una cantidad')
                         continue
 
                     try:
                         cantidad = int(cantidad)
                     except ValueError:
-                        errores.append(f'La cantidad debe ser un número entero para el producto {producto_id}')
+                        errores.append(f'La cantidad del producto {producto_id} debe ser un número entero')
                         continue
 
                     # Obtener el producto
@@ -547,10 +547,11 @@ class PedidoViewSet(viewsets.ModelViewSet):
 
                     detalles_creados.append(detalle)
 
-                except ValueError as e:
-                    errores.append(f'Error en los datos del producto: {str(e)}')
                 except Exception as e:
-                    errores.append(f'Error al procesar producto {producto_id}: {str(e)}')
+                    # Usar el ID del producto si está disponible, o un mensaje genérico
+                    producto_id = producto_data.get('producto_id') or producto_data.get('id')
+                    mensaje_error = f'Error al procesar producto {producto_id}: {str(e)}' if producto_id else f'Error al procesar producto: {str(e)}'
+                    errores.append(mensaje_error)
 
             # Si hubo errores, eliminar el pedido y sus detalles
             if errores:
@@ -568,6 +569,9 @@ class PedidoViewSet(viewsets.ModelViewSet):
             return Response(response_data, status=status.HTTP_201_CREATED)
             
         except Exception as e:
+            # Asegurarse de que el pedido se elimine si hubo un error general
+            if 'pedido' in locals():
+                pedido.delete()
             return Response({
                 'error': f'Error al crear el pedido: {str(e)}',
                 'detalles': 'Ocurrió un error inesperado al procesar la solicitud'
