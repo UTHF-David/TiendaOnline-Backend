@@ -493,10 +493,21 @@ class CarritoTemp(models.Model):
     def __str__(self):
         return f"Carrito de {self.usuario.nombre_cliente} - {self.producto.nombre}"
 
-    def verificar_expiracion(self):
+    #se ejecuta por cada producto que se añada y al entrr al carrito    
+
+    def verificar_carrito(self):
+    #consulte stock hay = true
+        if self.cantidad_prod > self.producto.cantidad_en_stock:
+            self.cantidad_prod = self.producto.cantidad_en_stock
+        
+        self.expirado = False
+        self.cantidad_temp = self.cantidad_prod
+    
+
+    def expiracion(self):
         """Verifica si el carrito ha expirado (60 segundos) y maneja la expiración secuencial"""
         from django.utils import timezone
-        from datetime import timedelta
+        #from datetime import timedelta
         
         # Verificar si han pasado 60 segundos desde la última verificación
         if not self.expirado:
@@ -505,6 +516,7 @@ class CarritoTemp(models.Model):
                 self.cantidad_temp = 0                
                 self.expirado=True
                 self.producto.save()
+
             #if self.cantidad_prod > self.producto.cantidad_en_stock:
             #   self.cantidad_prod = self.producto.cantidad_en_stock
                 # Solo devolver 1 unidad al stock
@@ -532,7 +544,7 @@ class CarritoTemp(models.Model):
         expirados = []
         
         for carrito in carritos:
-            if carrito.verificar_expiracion():
+            if carrito.expiracion():
                 expirados.append(carrito)
         
         return expirados

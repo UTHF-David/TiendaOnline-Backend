@@ -23,7 +23,7 @@ def verificar_carritos_expirados():
         
         for carrito in carritos:
             try:
-                if carrito.verificar_expiracion():
+                if carrito.expiracion():
                     logger.info(f"Carrito {carrito.id} expirado correctamente")
             except Exception as e:
                 logger.error(f"Error al verificar expiración del carrito {carrito.id}: {e}")
