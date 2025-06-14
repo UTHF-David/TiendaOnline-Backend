@@ -1,3 +1,4 @@
+from venv import logger
 from rest_framework.parsers import MultiPartParser, FormParser
 from .serializer import ProductoSerializer, PedidoSerializer, PedidoDetalleSerializer, UsuarioSerializer, CarritoTempSerializer
 from django.shortcuts import get_object_or_404
@@ -826,6 +827,41 @@ class CarritoTempViewSet(viewsets.ModelViewSet):
         """Crea un nuevo registro en el carrito"""
         serializer.save(usuario=self.request.user)
 
+    def destroy(self, request, *args, **kwargs):
+        """
+        Elimina un item del carrito y devuelve el stock si el producto aún existe.
+        
+        Args:
+            request: Request HTTP
+            *args: Argumentos adicionales
+            **kwargs: Argumentos con nombre adicionales
+            
+        Returns:
+            Response: Respuesta HTTP 204 si se eliminó correctamente
+        """
+        try:
+            instance = self.get_object()
+            
+            # Verificar si el producto asociado aún existe
+            try:
+                producto = instance.producto
+                # Solo devolver stock si el producto existe
+                producto.cantidad_en_stock += instance.cantidad_prod
+                producto.save()
+            except Producto.DoesNotExist:
+                # Producto ya no existe, no devolvemos stock pero registramos
+                logger.warning(f'Producto {instance.producto_id} no existe al eliminar del carrito')
+            
+            self.perform_destroy(instance)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+            
+        except Exception as e:
+            logger.error(f'Error al eliminar del carrito: {str(e)}')
+            return Response({
+                'error': str(e),
+                'message': 'No se pudo eliminar el producto del carrito'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
     @action(detail=False, methods=['get'])
     def verificar_expiracion(self, request):
         """
@@ -851,12 +887,33 @@ class CarritoTempViewSet(viewsets.ModelViewSet):
     def limpiar_carrito(self, request):
         """
         Elimina todos los productos del carrito del usuario.
+        Devuelve el stock de los productos que aún existen.
         """
-        carritos = self.get_queryset()
-        count = carritos.count()
-        carritos.delete()
-        
-        return Response({
-            'message': f'Se eliminaron {count} productos del carrito'
-        })
+        try:
+            carritos = self.get_queryset()
+            count = carritos.count()
+            
+            # Primero devolver el stock de los productos existentes
+            for carrito in carritos:
+                try:
+                    producto = carrito.producto
+                    producto.cantidad_en_stock += carrito.cantidad_prod
+                    producto.save()
+                except Producto.DoesNotExist:
+                    continue
+            
+            # Luego eliminar todos los registros del carrito
+            carritos.delete()
+            
+            return Response({
+                'message': f'Se eliminaron {count} productos del carrito',
+                'productos_devueltos': count
+            })
+            
+        except Exception as e:
+            logger.error(f'Error al limpiar carrito: {str(e)}')
+            return Response({
+                'error': str(e),
+                'message': 'Error al limpiar el carrito'
+            }, status=status.HTTP_400_BAD_REQUEST)
         
