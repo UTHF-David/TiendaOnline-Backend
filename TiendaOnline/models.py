@@ -3,6 +3,8 @@ from django.core.validators import MinValueValidator, RegexValidator
 from django.contrib.auth.models import AbstractUser, Group, Permission, BaseUserManager
 from django.core.exceptions import ValidationError
 from decimal import Decimal
+from django.utils import timezone
+from datetime import timedelta # Asegúrate de importar timedelta aquí
 
 class UsuarioManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
@@ -335,8 +337,8 @@ class PedidoDetalle(models.Model):
         null=False
     )
     cantidad_prod = models.PositiveIntegerField(
-        verbose_name='Cantidad',
         validators=[MinValueValidator(1)],
+        verbose_name='Cantidad',
         null=False
     )
     subtotal = models.DecimalField(
@@ -432,17 +434,17 @@ class CarritoTemp(models.Model):
         verbose_name='Fecha de Creación'
     )
     fecha_actualizacion = models.DateTimeField(
-        auto_now=True,
+        auto_now=True, # Usaremos este campo para la verificación de inactividad
         verbose_name='Fecha de Actualización'
     )
     expirado = models.BooleanField(
         default=False,
         verbose_name='¿Expirado?'
     )
-    ultima_verificacion = models.DateTimeField(
-        auto_now_add=True,
-        verbose_name='Última Verificación'
-    )
+    #ultima_verificacion = models.DateTimeField( # Comentado, se prefiere fecha_actualizacion
+    #    auto_now_add=True,
+    #    verbose_name='Última Verificación'
+    #)
 
     class Meta:
         verbose_name = 'Carrito Temporal'
@@ -493,61 +495,117 @@ class CarritoTemp(models.Model):
     def __str__(self):
         return f"Carrito de {self.usuario.nombre_cliente} - {self.producto.nombre}"
 
-    #se ejecuta por cada producto que se añada y al entrr al carrito    
-
     def verificar_carrito(self):
-    #consulte stock hay = true
+        """
+        Verifica el estado del carrito y ajusta la cantidad si excede el stock disponible.
+        Retorna True si el item es válido y ajustado, False si el producto no existe o está completamente sin stock.
+        """
+        if not self.producto:
+            self.expirado = True
+            self.save()
+            return False # Producto no existe, marcar como no válido
+
         if self.cantidad_prod > self.producto.cantidad_en_stock:
-            self.cantidad_prod = self.producto.cantidad_en_stock
+            # Si la cantidad en carrito es mayor que el stock disponible
+            if self.producto.cantidad_en_stock > 0:
+                # Ajustar cantidad al stock disponible
+                self.cantidad_prod = self.producto.cantidad_en_stock
+                self.cantidad_temp = self.cantidad_prod
+                self.expirado = False # Asegurarse de que no esté marcado como expirado si se ajustó
+                self.save()
+                return True # Válido con cantidad ajustada
+            else:
+                # Stock es 0, el producto está completamente sin stock
+                self.expirado = True
+                if self.cantidad_temp > 0: # Devuelve cualquier stock reservado si lo había
+                    self.producto.cantidad_en_stock += self.cantidad_temp
+                    self.producto.save()
+                self.cantidad_temp = 0
+                self.save()
+                return False # No válido (sin stock)
         
-        self.expirado = False
-        self.cantidad_temp = self.cantidad_prod
-    
+        # Si cantidad_prod es <= stock disponible, es válido.
+        # Asegurarse que cantidad_temp sea igual a cantidad_prod y no esté expirado.
+        if self.cantidad_temp != self.cantidad_prod or self.expirado:
+            self.cantidad_temp = self.cantidad_prod
+            self.expirado = False
+            self.save()
+        return True
+
 
     def expiracion(self):
-        """Verifica si el carrito ha expirado (60 segundos) y maneja la expiración secuencial"""
-        from django.utils import timezone
-        #from datetime import timedelta
-        
-        # Verificar si han pasado 60 segundos desde la última verificación
-        if not self.expirado:
-            # Si la cantidad es mayor a 1, reducir en 1
-            if self.cantidad_temp > 0:
-                self.cantidad_temp = 0                
-                self.expirado=True
-                self.producto.save()
+        """
+        Verifica si el carrito ha expirado por inactividad (ej. 60 segundos)
+        y devuelve el stock al producto si expira.
+        """
+        # Si ya está expirado, no hacer nada
+        if self.expirado:
+            return True # Ya está expirado
 
-            #if self.cantidad_prod > self.producto.cantidad_en_stock:
-            #   self.cantidad_prod = self.producto.cantidad_en_stock
-                # Solo devolver 1 unidad al stock
-                #self.producto.cantidad_en_stock += 1            
-            # else:
-            #     # Si la cantidad es 1, marcar como expirado
-            #     self.expirado = True
-            #     self.cantidd_prod = 0
-            #     # Solo devolver la cantidad temporal restante
-            #     self.producto.cantidad_en_stock += self.cantidad_temp
-            #     self.cantidad_temp = 0
-            #     self.producto.save()
+        # Definir el tiempo de inactividad permitido (ej. 60 segundos)
+        tiempo_inactividad_permitida = timedelta(seconds=60) 
+        
+        # Comprobar si ha pasado el tiempo de inactividad desde la última actualización
+        if (timezone.now() - self.fecha_actualizacion) > tiempo_inactividad_permitida:
+            # Si el carrito ha estado inactivo por más del tiempo permitido
+            self.expirado = True
             
-            # # Actualizar la última verificación
-            # self.ultima_verificacion = timezone.now()
-            self.save()
-            return True
+            # Devolver el stock reservado al producto
+            if self.cantidad_temp > 0:
+                self.producto.cantidad_en_stock += self.cantidad_temp
+                self.producto.save()
+                self.cantidad_temp = 0 # Resetear cantidad temporal después de devolver stock
+
+            self.save() # Guardar la instancia de CarritoTemp para marcarla como expirada
+            return True # Ha expirado
             
-        return False
+        return False # No ha expirado por tiempo
+
 
     @classmethod
     def verificar_expiracion_carrito(cls, usuario):
-        """Verifica la expiración de todos los productos en el carrito de un usuario"""
-        carritos = cls.objects.filter(usuario=usuario, expirado=False)
-        expirados = []
+        """
+        Verifica la expiración y stock de todos los productos en el carrito de un usuario.
+        Retorna una lista de diccionarios con información de productos expirados o ajustados.
+        """
+        carritos_actuales = cls.objects.filter(usuario=usuario)
+        productos_expirados_o_ajustados = []
         
-        for carrito in carritos:
-            if carrito.expiracion():
-                expirados.append(carrito)
-        
-        return expirados
+        for carrito_item in carritos_actuales:
+            original_cantidad_prod = carrito_item.cantidad_prod
+            original_expirado = carrito_item.expirado
 
+            # Primero, verificar y ajustar el stock
+            is_valid_after_stock_check = carrito_item.verificar_carrito()
+            
+            # Si después de verificar stock, no es válido (ej. producto eliminado o sin stock)
+            if not is_valid_after_stock_check:
+                productos_expirados_o_ajustados.append({
+                    'id': carrito_item.id,
+                    'producto_id': carrito_item.producto.id if carrito_item.producto else None,
+                    'cantidad_original': original_cantidad_prod,
+                    'cantidad_actual': carrito_item.cantidad_prod,
+                    'motivo': 'sin_stock_o_producto_no_existe'
+                })
+                continue # Pasar al siguiente item si ya se manejó
 
+            # Luego, verificar la expiración por inactividad
+            if carrito_item.expiracion():
+                productos_expirados_o_ajustados.append({
+                    'id': carrito_item.id,
+                    'producto_id': carrito_item.producto.id,
+                    'cantidad_original': original_cantidad_prod,
+                    'cantidad_actual': carrito_item.cantidad_prod,
+                    'motivo': 'expirado_por_tiempo'
+                })
+            elif original_cantidad_prod != carrito_item.cantidad_prod:
+                 # Si la cantidad cambió debido a stock, reportarlo
+                 productos_expirados_o_ajustados.append({
+                    'id': carrito_item.id,
+                    'producto_id': carrito_item.producto.id,
+                    'cantidad_original': original_cantidad_prod,
+                    'cantidad_actual': carrito_item.cantidad_prod,
+                    'motivo': 'cantidad_ajustada_por_stock'
+                })
 
+        return productos_expirados_o_ajustados
