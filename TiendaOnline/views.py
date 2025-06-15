@@ -876,7 +876,7 @@ class CarritoTempViewSet(viewsets.ModelViewSet):
             # 2. Intentar devolver el stock (si el producto existe)
             try:
                 producto = Producto.objects.select_for_update().get(pk=producto_id)
-                producto.cantidad_en_stock += cantidad
+                producto.cantidad_en_stock += 1
                 producto.save()
                 logger.info(f'Stock devuelto: {cantidad} unidades al producto {producto_id}')
             except Producto.DoesNotExist:
