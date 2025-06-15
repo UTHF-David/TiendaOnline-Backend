@@ -14,7 +14,10 @@ from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
 import base64
 from decimal import Decimal, InvalidOperation
+from django.db import transaction
+import logging
 
+logger = logging.getLogger(__name__)
 
 class ProductoViewSet(viewsets.ModelViewSet):
     """
@@ -769,151 +772,147 @@ class RegistrarMovimientoView(APIView):
 
 class CarritoTempViewSet(viewsets.ModelViewSet):
     """
-    ViewSet para gestionar el carrito temporal de compras.
-    
-    Este ViewSet maneja las operaciones CRUD para el carrito temporal,
-    incluyendo la verificación de expiración y el manejo de stock.
-    
-    Endpoints:
-        GET /carrito/ - Lista los productos en el carrito del usuario
-        POST /carrito/ - Agrega un producto al carrito
-        GET /carrito/{id}/ - Obtiene un producto específico del carrito
-        PUT /carrito/{id}/ - Actualiza la cantidad de un producto
-        DELETE /carrito/{id}/ - Elimina un producto del carrito
-        GET /carrito/verificar-expiracion/ - Verifica productos expirados
+    ViewSet mejorado para gestionar el carrito temporal de compras con manejo robusto de stock.
     """
     serializer_class = CarritoTempSerializer
     permission_classes = [IsAuthenticated]
     authentication_classes = [TokenAuthentication]
 
     def get_queryset(self):
-        """Filtra los carritos por usuario actual"""
-        return CarritoTemp.objects.filter(usuario=self.request.user)
+        return CarritoTemp.objects.filter(usuario=self.request.user).select_related('producto')
 
+    @transaction.atomic
     def create(self, request, *args, **kwargs):
         """
-        Crea o actualiza un item en el carrito.
-        Si el producto ya existe en el carrito del usuario, actualiza su cantidad.
+        Crea o actualiza un ítem en el carrito con verificación de stock.
         """
         try:
-            # Buscar si ya existe el producto en el carrito del usuario
+            producto_id = request.data.get('producto')
+            cantidad = int(request.data.get('cantidad_prod', 1))
+            
+            # Verificar que el producto existe y tiene stock suficiente
+            producto = Producto.objects.get(id=producto_id)
+            if producto.cantidad_en_stock < cantidad:
+                return Response(
+                    {'error': f'Stock insuficiente. Disponible: {producto.cantidad_en_stock}'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Buscar ítem existente
             carrito_existente = CarritoTemp.objects.filter(
                 usuario=request.user,
-                producto_id=request.data.get('producto')
+                producto_id=producto_id
             ).first()
 
             if carrito_existente:
-                # Si existe, actualizar la cantidad
-                cantidad_actual = carrito_existente.cantidad_prod
-                nueva_cantidad = int(request.data.get('cantidad_prod', 1))
-                carrito_existente.cantidad_prod = cantidad_actual + nueva_cantidad
+                # Verificar stock para la nueva cantidad total
+                nueva_cantidad_total = carrito_existente.cantidad_prod + cantidad
+                if producto.cantidad_en_stock < nueva_cantidad_total:
+                    return Response(
+                        {'error': f'Stock insuficiente para agregar {cantidad} unidades. Disponible: {producto.cantidad_en_stock - carrito_existente.cantidad_prod}'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                
+                carrito_existente.cantidad_prod = nueva_cantidad_total
                 carrito_existente.save()
                 serializer = self.get_serializer(carrito_existente)
                 return Response(serializer.data, status=status.HTTP_200_OK)
             else:
-                # Si no existe, crear nuevo registro
-                serializer = self.get_serializer(data=request.data)
+                # Crear nuevo ítem
+                data = request.data.copy()
+                data['usuario'] = request.user.id
+                serializer = self.get_serializer(data=data)
                 serializer.is_valid(raise_exception=True)
                 self.perform_create(serializer)
+                
+                # Actualizar stock (reservar)
+                producto.cantidad_en_stock -= cantidad
+                producto.save()
+                
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+        except Producto.DoesNotExist:
+            return Response(
+                {'error': 'Producto no encontrado'},
+                status=status.HTTP_404_NOT_FOUND
+            )
         except Exception as e:
+            logger.error(f'Error en creación de carrito: {str(e)}')
             return Response(
                 {'error': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-    def perform_create(self, serializer):
-        """Crea un nuevo registro en el carrito"""
-        serializer.save(usuario=self.request.user)
-
+    @transaction.atomic
     def destroy(self, request, *args, **kwargs):
         """
-        Elimina un item del carrito y devuelve el stock si el producto aún existe.
-        
-        Args:
-            request: Request HTTP
-            *args: Argumentos adicionales
-            **kwargs: Argumentos con nombre adicionales
-            
-        Returns:
-            Response: Respuesta HTTP 204 si se eliminó correctamente
+        Elimina un ítem del carrito y devuelve el stock correctamente.
         """
         try:
             instance = self.get_object()
+            producto_id = instance.producto_id
+            cantidad = instance.cantidad_prod
             
-            # Verificar si el producto asociado aún existe
-            try:
-                producto = instance.producto
-                # Solo devolver stock si el producto existe
-                producto.cantidad_en_stock += instance.cantidad_prod
-                producto.save()
-            except Producto.DoesNotExist:
-                # Producto ya no existe, no devolvemos stock pero registramos
-                logger.warning(f'Producto {instance.producto_id} no existe al eliminar del carrito')
-            
+            # Eliminar el ítem primero
             self.perform_destroy(instance)
+            
+            # Intentar devolver el stock
+            try:
+                producto = Producto.objects.get(id=producto_id)
+                producto.cantidad_en_stock += cantidad
+                producto.save()
+                logger.info(f'Stock devuelto: {cantidad} unidades para producto {producto_id}')
+            except Producto.DoesNotExist:
+                logger.warning(f'Producto {producto_id} no existe al devolver stock')
+            
             return Response(status=status.HTTP_204_NO_CONTENT)
             
         except Exception as e:
             logger.error(f'Error al eliminar del carrito: {str(e)}')
-            return Response({
-                'error': str(e),
-                'message': 'No se pudo eliminar el producto del carrito'
-            }, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-    @action(detail=False, methods=['get'])
-    def verificar_expiracion(self, request):
-        """
-        Verifica y actualiza los productos expirados en el carrito.
-        
-        Returns:
-            Response: Lista de productos expirados
-        """
-        expirados = CarritoTemp.verificar_expiracion_carrito(request.user)
-        
-        if expirados:
-            serializer = self.get_serializer(expirados, many=True)
-            return Response({
-                'message': 'Se encontraron productos expirados',
-                'productos_expirados': serializer.data
-            })
-        
-        return Response({
-            'message': 'No hay productos expirados'
-        })
-
+    @transaction.atomic
     @action(detail=False, methods=['delete'])
     def limpiar_carrito(self, request):
         """
-        Elimina todos los productos del carrito del usuario.
-        Devuelve el stock de los productos que aún existen.
+        Limpia el carrito completo con manejo adecuado de stock.
         """
         try:
-            carritos = self.get_queryset()
-            count = carritos.count()
+            items = self.get_queryset()
+            productos_a_actualizar = {}
             
-            # Primero devolver el stock de los productos existentes
-            for carrito in carritos:
+            # Preparar actualizaciones de stock
+            for item in items:
+                if item.producto_id not in productos_a_actualizar:
+                    productos_a_actualizar[item.producto_id] = 0
+                productos_a_actualizar[item.producto_id] += item.cantidad_prod
+            
+            # Eliminar todos los ítems
+            count = items.count()
+            items.delete()
+            
+            # Actualizar stock de productos existentes
+            for producto_id, cantidad in productos_a_actualizar.items():
                 try:
-                    producto = carrito.producto
-                    producto.cantidad_en_stock += carrito.cantidad_prod
+                    producto = Producto.objects.get(id=producto_id)
+                    producto.cantidad_en_stock += cantidad
                     producto.save()
                 except Producto.DoesNotExist:
                     continue
             
-            # Luego eliminar todos los registros del carrito
-            carritos.delete()
-            
             return Response({
-                'message': f'Se eliminaron {count} productos del carrito',
-                'productos_devueltos': count
+                'message': f'Carrito limpiado. {count} ítems eliminados.',
+                'items_eliminados': count
             })
             
         except Exception as e:
             logger.error(f'Error al limpiar carrito: {str(e)}')
-            return Response({
-                'error': str(e),
-                'message': 'Error al limpiar el carrito'
-            }, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         
