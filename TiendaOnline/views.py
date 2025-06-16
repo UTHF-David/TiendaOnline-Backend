@@ -16,6 +16,7 @@ import base64
 from decimal import Decimal, InvalidOperation
 from django.db import transaction
 import logging
+from django.views.decorators.csrf import csrf_exempt
 
 logger = logging.getLogger(__name__)
 
@@ -100,30 +101,34 @@ class ProductoViewSet(viewsets.ModelViewSet):
         
         return Response(serializer.data)
 
-    @action(detail=True, methods=['put'], url_path='actualizar_cantidad_en_stock/(?P<cantidad>[0-9]+)')
-    def update_stock(self, request, pk=None, cantidad=None):
+    #@action(detail=True, methods=['put'], url_path='actualizar_cantidad_en_stock/(?P<cantidad>[0-9]+)')
+    @action(detail=True, methods=['put'], url_path='actualizar_cantidad_en_stock')
+    @permission_classes([AllowAny])
+    @csrf_exempt
+    def update_stock(self, request, pk=None):
         """
         Actualiza el stock de un producto restando la cantidad especificada.
         
         Args:
             request: Request con los datos
             pk: ID del producto
-            cantidad: Cantidad a restar del stock
             
         Returns:
             Response: Respuesta con el stock actualizado o error
         """
         try:
             producto = get_object_or_404(Producto, id=pk)
-
+            
+            # Obtener cantidad del query parameter
+            cantidad = request.query_params.get('cantidad')
+            
             if cantidad is None or not cantidad.isdigit():
                 return Response({'error': 'Cantidad inválida.'}, status=status.HTTP_400_BAD_REQUEST)
 
             cantidad = int(cantidad)
             nuevo_stock = producto.cantidad_en_stock - cantidad
-            hola = cantidad
             
-            print(hola)
+            print(f"Cantidad a restar: {cantidad}")  # Debug
 
             if nuevo_stock < 0:
                 return Response({'error': 'La cantidad excede el stock disponible.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -137,36 +142,50 @@ class ProductoViewSet(viewsets.ModelViewSet):
                     'id': producto.id,
                     'nombre': producto.nombre,
                     'cantidad_en_stock': producto.cantidad_en_stock,
-                    
                 }
             }, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
-    @action(detail=True, methods=['put'], url_path='agregar_en_stock/(?P<cantidad>[0-9-]+)')
-    def add_update_stock(self, request, pk=None, cantidad=None):
+    @action(detail=True, methods=['put'], url_path='agregar_en_stock')
+    @permission_classes([AllowAny])
+    @csrf_exempt
+    def add_update_stock(self, request, pk=None):
         """
         Actualiza el stock de un producto sumando la cantidad especificada.
         
         Args:
             request: Request con los datos
             pk: ID del producto
-            cantidad: Cantidad a sumar al stock (puede ser negativa)
             
         Returns:
             Response: Respuesta con el stock actualizado o error
         """
         try:
             producto = get_object_or_404(Producto, id=pk)
-
-            if cantidad is None or not cantidad.lstrip('-').isdigit():
-                return Response({'error': 'Cantidad inválida.'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Obtener cantidad de los query parameters
+            cantidad = request.query_params.get('cantidad')
+            
+            # Mensaje de depuración (puedes eliminarlo después)
+            print(f"Valor recibido de cantidad: {cantidad}")
+            
+            if cantidad is None or not str(cantidad).lstrip('-').isdigit():
+                return Response({
+                    'error': 'Cantidad inválida.',
+                    'detalle': f'Se recibió: {cantidad}',
+                    'sugerencia': 'Use ?cantidad=<numero> en la URL'
+                }, status=status.HTTP_400_BAD_REQUEST)
 
             cantidad = int(cantidad)
             nuevo_stock = producto.cantidad_en_stock + cantidad
 
             if nuevo_stock < 0:
-                return Response({'error': 'La cantidad excede el stock disponible.'}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({
+                    'error': 'La cantidad excede el stock disponible.',
+                    'stock_actual': producto.cantidad_en_stock,
+                    'intento_de_restar': abs(cantidad) if cantidad < 0 else None
+                }, status=status.HTTP_400_BAD_REQUEST)
 
             producto.cantidad_en_stock = nuevo_stock
             producto.save()
@@ -177,11 +196,15 @@ class ProductoViewSet(viewsets.ModelViewSet):
                     'id': producto.id,
                     'nombre': producto.nombre,
                     'cantidad_en_stock': producto.cantidad_en_stock,
-                    
+                    'cambio_realizado': cantidad
                 }
             }, status=status.HTTP_200_OK)
+            
         except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({
+                'error': 'Error interno del servidor',
+                'detalle': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class UsuarioViewSet(viewsets.ModelViewSet):
