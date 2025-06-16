@@ -134,6 +134,7 @@ class ProductoViewSet(viewsets.ModelViewSet):
                     'id': producto.id,
                     'nombre': producto.nombre,
                     'cantidad_en_stock': producto.cantidad_en_stock,
+                    'cantidad': cantidad
                 }
             }, status=status.HTTP_200_OK)
         except Exception as e:
@@ -876,7 +877,12 @@ class CarritoTempViewSet(viewsets.ModelViewSet):
             # 2. Intentar devolver el stock (si el producto existe)
             try:
                 producto = Producto.objects.select_for_update().get(pk=producto_id)
-                instance.producto.cantidad_en_stock += cantidad
+                # el error que duplicaba al borrar era que estaba en producto.cantidad_en_stock
+                # y nuez que lo duplicara sino que si habia 120 en stock y se añadian 4 productos el stock
+                # la variable quedaria como 120 a pesar de que en la bd bajara por eso al devolverlo hacia
+                #una especie de duplicacion
+
+                instance.producto.cantidad_en_stock += cantidad 
                 producto.save()
                 logger.info(f'Stock devuelto: {cantidad} unidades al producto {producto_id}')
             except Producto.DoesNotExist:
