@@ -122,8 +122,8 @@ class ProductoViewSet(viewsets.ModelViewSet):
             # Obtener cantidad del query parameter
             cantidad = request.query_params.get('cantidad')
             
-            if cantidad is None or not cantidad.isdigit():
-                return Response({'error': 'Cantidad inválida.'}, status=status.HTTP_400_BAD_REQUEST)
+            # if cantidad is None or not cantidad.isdigit():
+            #     return Response({'error': 'Cantidad inválida.'}, status=status.HTTP_400_BAD_REQUEST)
 
             cantidad = int(cantidad)
             nuevo_stock = producto.cantidad_en_stock - cantidad
@@ -170,12 +170,12 @@ class ProductoViewSet(viewsets.ModelViewSet):
             # Mensaje de depuración (puedes eliminarlo después)
             print(f"Valor recibido de cantidad: {cantidad}")
             
-            # if cantidad is None or not str(cantidad).lstrip('-').isdigit():
-            #     return Response({
-            #         'error': 'Cantidad inválida.',
-            #         'detalle': f'Se recibió: {cantidad}',
-            #         'sugerencia': 'Use ?cantidad=<numero> en la URL'
-            #     }, status=status.HTTP_400_BAD_REQUEST)
+            if cantidad is None or not str(cantidad).lstrip('-').isdigit():
+                return Response({
+                    'error': 'Cantidad inválida.',
+                    'detalle': f'Se recibió: {cantidad}',
+                    'sugerencia': 'Use ?cantidad=<numero> en la URL'
+                }, status=status.HTTP_400_BAD_REQUEST)
 
             cantidad = int(cantidad)
             nuevo_stock = producto.cantidad_en_stock + cantidad
