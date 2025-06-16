@@ -122,8 +122,8 @@ class ProductoViewSet(viewsets.ModelViewSet):
             # Obtener cantidad del query parameter
             cantidad = request.query_params.get('cantidad')
             
-            if cantidad is None or not cantidad.isdigit():
-                return Response({'error': 'Cantidad inválida.'}, status=status.HTTP_400_BAD_REQUEST)
+            # if cantidad is None or not cantidad.isdigit():
+            #     return Response({'error': 'Cantidad inválida.'}, status=status.HTTP_400_BAD_REQUEST)
 
             cantidad = int(cantidad)
             nuevo_stock = producto.cantidad_en_stock - cantidad
