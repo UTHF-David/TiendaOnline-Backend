@@ -100,7 +100,7 @@ class ProductoViewSet(viewsets.ModelViewSet):
         
         return Response(serializer.data)
 
-    @action(detail=True, methods=['put'], url_path='cantidad_en_stock/(?P<cantidad>[0-9]+)')
+    @action(detail=True, methods=['put'], url_path='actualizar_cantidad_en_stock/(?P<cantidad>[0-9]+)')
     def update_stock(self, request, pk=None, cantidad=None):
         """
         Actualiza el stock de un producto restando la cantidad especificada.
@@ -121,6 +121,9 @@ class ProductoViewSet(viewsets.ModelViewSet):
 
             cantidad = int(cantidad)
             nuevo_stock = producto.cantidad_en_stock - cantidad
+            hola = cantidad
+            
+            print(hola)
 
             if nuevo_stock < 0:
                 return Response({'error': 'La cantidad excede el stock disponible.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -134,13 +137,13 @@ class ProductoViewSet(viewsets.ModelViewSet):
                     'id': producto.id,
                     'nombre': producto.nombre,
                     'cantidad_en_stock': producto.cantidad_en_stock,
-                    'cantidad': cantidad
+                    
                 }
             }, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
-    @action(detail=True, methods=['put'], url_path='cantidad_en_stock/(?P<cantidad>[0-9-]+)')
+    @action(detail=True, methods=['put'], url_path='agregar_en_stock/(?P<cantidad>[0-9-]+)')
     def add_update_stock(self, request, pk=None, cantidad=None):
         """
         Actualiza el stock de un producto sumando la cantidad especificada.
@@ -174,6 +177,7 @@ class ProductoViewSet(viewsets.ModelViewSet):
                     'id': producto.id,
                     'nombre': producto.nombre,
                     'cantidad_en_stock': producto.cantidad_en_stock,
+                    
                 }
             }, status=status.HTTP_200_OK)
         except Exception as e:
