@@ -124,35 +124,37 @@ class ProductoViewSet(viewsets.ModelViewSet):
             Response: Respuesta con el stock actualizado o error
         """
         try:
-            producto = get_object_or_404(Producto, id=pk)
+            item = CarritoTemp.objects.select_for_update().get(pk=pk)
+            nueva_cantidad = int(request.data.get('cantidad'))
+            actualizar_stock = request.data.get('actualizar_stock', True)
             
-            # Obtener cantidad del query parameter
-            cantidad = request.query_params.get('cantidad')
+            diferencia = nueva_cantidad - item.cantidad_prod
             
-            if cantidad is None or not cantidad.isdigit():
-                return Response({'error': 'Cantidad inválida.'}, status=status.HTTP_400_BAD_REQUEST)
-
-            cantidad = int(cantidad)
-            nuevo_stock = producto.cantidad_en_stock - cantidad
+            # Si estamos aumentando, verificar stock
+            if diferencia > 0 and actualizar_stock:
+                producto = Producto.objects.select_for_update().get(pk=item.producto_id)
+                if producto.cantidad_en_stock < diferencia:
+                    return Response(
+                        {'error': f'Stock insuficiente. Disponible: {producto.cantidad_en_stock}'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                producto.cantidad_en_stock -= diferencia
+                producto.save()
             
-            print(f"Cantidad a restar: {cantidad}")  # Debug
-
-            if nuevo_stock < 0:
-                return Response({'error': 'La cantidad excede el stock disponible.'}, status=status.HTTP_400_BAD_REQUEST)
-
-            producto.cantidad_en_stock = nuevo_stock
-            producto.save()
-
-            return Response({
-                'message': 'Stock actualizado correctamente.',
-                'producto': {
-                    'id': producto.id,
-                    'nombre': producto.nombre,
-                    'cantidad_en_stock': producto.cantidad_en_stock,
-                }
-            }, status=status.HTTP_200_OK)
+            # Si estamos disminuyendo, devolver stock
+            elif diferencia < 0 and actualizar_stock:
+                producto = Producto.objects.select_for_update().get(pk=item.producto_id)
+                producto.cantidad_en_stock += abs(diferencia)
+                producto.save()
+            
+            # Actualizar cantidad en carrito
+            item.cantidad_prod = nueva_cantidad
+            item.save()
+            
+            return Response(CarritoTempSerializer(item).data)
+            
         except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         
     @action(detail=True, methods=['put'], url_path='agregar_en_stock')
     @permission_classes([AllowAny])
