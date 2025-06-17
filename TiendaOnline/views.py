@@ -126,11 +126,11 @@ class ProductoViewSet(viewsets.ModelViewSet):
                 return Response({'error': 'Cantidad inválida.'}, status=status.HTTP_400_BAD_REQUEST)
 
             cantidad = int(cantidad)
-            nuevo_stock = producto.cantidad_en_stock - cantidad
+            nuevo_stock = producto.cantidad_en_stock - cantidad            
             
             print(f"Cantidad a restar: {cantidad}")  # Debug
 
-            if nuevo_stock < 0:
+            if nuevo_stock < 1:
                 return Response({'error': 'La cantidad excede el stock disponible.'}, status=status.HTTP_400_BAD_REQUEST)
 
             producto.cantidad_en_stock = nuevo_stock
@@ -841,9 +841,12 @@ class CarritoTempViewSet(viewsets.ModelViewSet):
                 carrito_existente.cantidad_prod = nueva_cantidad
                 carrito_existente.save()
                 
-                # Reservar stock
-                producto.cantidad_en_stock -= cantidad
-                producto.save()
+
+                #si davis pregunta yo lo comente pq l odescubri
+
+                # # Reservar stock
+                # producto.cantidad_en_stock -= cantidad
+                # producto.save()
                 
                 serializer = self.get_serializer(carrito_existente)
                 return Response(serializer.data, status=status.HTTP_200_OK)
@@ -859,9 +862,11 @@ class CarritoTempViewSet(viewsets.ModelViewSet):
                 serializer = self.get_serializer(data=data)
                 serializer.is_valid(raise_exception=True)
                 
+                #tambien la descubri yo
+                
                 # Reservar stock antes de crear el ítem
-                producto.cantidad_en_stock -= cantidad
-                producto.save()
+                # producto.cantidad_en_stock -= cantidad
+                # producto.save()
                 
                 self.perform_create(serializer)
                 headers = self.get_success_headers(serializer.data)
