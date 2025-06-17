@@ -73,33 +73,40 @@ class ProductoViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+    @transaction.atomic
     def update(self, request, *args, **kwargs):
-        """
-        Actualiza un producto existente.
-        
-        Args:
-            request: Request con los datos actualizados
-            *args: Argumentos adicionales
-            **kwargs: Argumentos con nombre adicionales
+        try:
+            instance = self.get_object()
+            data = request.data.copy()
             
-        Returns:
-            Response: Respuesta con el producto actualizado
-        """
-        partial = kwargs.pop('partial', False)
-        instance = self.get_object()
-        
-        data = request.data.copy()
-        
-        if 'imagen' in request.FILES:
-            imagen_file = request.FILES['imagen']
-            imagen_data = imagen_file.read()
-            data['image'] = base64.b64encode(imagen_data).decode('utf-8')
-        
-        serializer = self.get_serializer(instance, data=data, partial=partial)
-        serializer.is_valid(raise_exception=True)
-        self.perform_update(serializer)
-        
-        return Response(serializer.data)
+            # Bloquear el registro para evitar condiciones de carrera
+            with transaction.atomic():
+                carrito_item = CarritoTemp.objects.select_for_update().get(pk=instance.pk)
+                
+                cantidad_actual = carrito_item.cantidad_prod
+                nueva_cantidad = int(data.get('cantidad_prod', cantidad_actual))
+                diferencia = nueva_cantidad - cantidad_actual
+                
+                # Solo verificar stock si estamos aumentando la cantidad
+                if diferencia > 0:
+                    producto = Producto.objects.select_for_update().get(pk=carrito_item.producto_id)
+                    if producto.cantidad_en_stock < diferencia:
+                        return Response(
+                            {'error': f'Stock insuficiente. Disponible: {producto.cantidad_en_stock}'},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
+                    
+                    producto.cantidad_en_stock -= diferencia
+                    producto.save()
+                
+                serializer = self.get_serializer(carrito_item, data=data, partial=True)
+                serializer.is_valid(raise_exception=True)
+                self.perform_update(serializer)
+                
+                return Response(serializer.data)
+                
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     #@action(detail=True, methods=['put'], url_path='actualizar_cantidad_en_stock/(?P<cantidad>[0-9]+)')
     @action(detail=True, methods=['put'], url_path='actualizar_cantidad_en_stock')
