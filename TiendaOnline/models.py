@@ -452,37 +452,39 @@ class CarritoTemp(models.Model):
         unique_together = ['usuario', 'producto']
         ordering = ['-fecha_actualizacion']
 
-    # def save(self, *args, **kwargs):
-    #     """Maneja la lógica de reserva de stock al guardar"""
-    #     # Si es un nuevo registro
-    #     if not self.pk:
-    #         # Verificar stock disponible
-    #         if self.producto.cantidad_en_stock < self.cantidad_prod:
-    #             raise ValidationError('No hay suficiente stock disponible')
-            
-    #         # Reservar el stock temporalmente
-    #         self.cantidad_temp = self.cantidad_prod
-    #         self.producto.cantidad_en_stock -= self.cantidad_temp
-    #         self.producto.save()
-    #     else:
-    #         # Si es una actualización
-    #         old_instance = CarritoTemp.objects.get(pk=self.pk)
-    #         diferencia = self.cantidad_prod - old_instance.cantidad_prod
-            
-    #         if diferencia > 0:
-    #             # Si se aumenta la cantidad
-    #             if self.producto.cantidad_en_stock < diferencia:
-    #                 raise ValidationError('No hay suficiente stock disponible')
-    #             self.producto.cantidad_en_stock -= diferencia
-    #             self.cantidad_temp = self.cantidad_prod
-    #         elif diferencia < 0:
-    #             # Si se reduce la cantidad
-    #             self.producto.cantidad_en_stock += diferencia
-    #             self.cantidad_temp = self.cantidad_prod
-            
-    #         self.producto.save()
+    def save(self, *args, **kwargs):
+        """Maneja la lógica de reserva de stock al guardar"""
         
-    #     super().save(*args, **kwargs)
+        super().save(*args, **kwargs)
+        # Si es un nuevo registro
+        # if not self.pk:
+        #     # Verificar stock disponible
+        #     if self.producto.cantidad_en_stock < self.cantidad_prod:
+        #         raise ValidationError('No hay suficiente stock disponible')
+            
+        #     # Reservar el stock temporalmente
+        #     self.cantidad_temp = self.cantidad_prod
+        #     self.producto.cantidad_en_stock -= self.cantidad_temp
+        #     self.producto.save()
+        # else:
+        #     # Si es una actualización
+        #     old_instance = CarritoTemp.objects.get(pk=self.pk)
+        #     diferencia = self.cantidad_prod - old_instance.cantidad_prod
+            
+        #     if diferencia > 0:
+        #         # Si se aumenta la cantidad
+        #         if self.producto.cantidad_en_stock < diferencia:
+        #             raise ValidationError('No hay suficiente stock disponible')
+        #         self.producto.cantidad_en_stock -= diferencia
+        #         self.cantidad_temp = self.cantidad_prod
+        #     elif diferencia < 0:
+        #         # Si se reduce la cantidad
+        #         self.producto.cantidad_en_stock += diferencia
+        #         self.cantidad_temp = self.cantidad_prod
+            
+        #     self.producto.save()
+        
+        # super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
         """Devuelve el stock al eliminar el registro"""
