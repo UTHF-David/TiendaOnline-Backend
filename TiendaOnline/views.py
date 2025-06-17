@@ -832,24 +832,22 @@ class CarritoTempViewSet(viewsets.ModelViewSet):
 
             if carrito_existente:
                 nueva_cantidad = carrito_existente.cantidad_prod + cantidad
-                if producto.cantidad_en_stock < cantidad:
+                if producto.cantidad_en_stock < nueva_cantidad:
                     return Response(
                         {'error': f'Stock insuficiente. Disponible: {producto.cantidad_en_stock}'},
                         status=status.HTTP_400_BAD_REQUEST
                     )
                 
-                carrito_existente.cantidad_prod = nueva_cantidad
-                carrito_existente.save()
+                # Usando self para actualizar y guardar
+                serializer = self.get_serializer(carrito_existente, data={
+                    'cantidad_prod': nueva_cantidad
+                }, partial=True)
                 
-
-                #si davis pregunta yo lo comente pq l odescubri
-
-                # # Reservar stock
-                # producto.cantidad_en_stock -= cantidad
-                # producto.save()
-                
-                serializer = self.get_serializer(carrito_existente)
-                return Response(serializer.data, status=status.HTTP_200_OK)
+                if serializer.is_valid():
+                    self.perform_update(serializer)
+                    return Response(serializer.data, status=status.HTTP_200_OK)
+                else:
+                    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
             else:
                 if producto.cantidad_en_stock < cantidad:
                     return Response(
@@ -861,12 +859,6 @@ class CarritoTempViewSet(viewsets.ModelViewSet):
                 data['usuario'] = request.user.id
                 serializer = self.get_serializer(data=data)
                 serializer.is_valid(raise_exception=True)
-                
-                #tambien la descubri yo
-                
-                # Reservar stock antes de crear el ítem
-                # producto.cantidad_en_stock -= cantidad
-                # producto.save()
                 
                 self.perform_create(serializer)
                 headers = self.get_success_headers(serializer.data)

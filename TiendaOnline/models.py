@@ -477,7 +477,7 @@ class CarritoTemp(models.Model):
                 self.cantidad_temp = self.cantidad_prod
             elif diferencia < 0:
                 # Si se reduce la cantidad
-                self.producto.cantidad_en_stock += abs(diferencia)
+                self.producto.cantidad_en_stock += diferencia
                 self.cantidad_temp = self.cantidad_prod
             
             self.producto.save()
