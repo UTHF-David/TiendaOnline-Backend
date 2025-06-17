@@ -839,10 +839,8 @@ class CarritoTempViewSet(viewsets.ModelViewSet):
                     )
                 
                 carrito_existente.cantidad_prod = nueva_cantidad,
-                carrito_existente.save()
-                    
-                
-
+                carrito_existente.super().save()
+                                    
                 #si davis pregunta yo lo comente pq l odescubri
 
                 # # Reservar stock
