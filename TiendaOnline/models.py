@@ -487,9 +487,9 @@ class CarritoTemp(models.Model):
     def delete(self, *args, **kwargs):
         """Devuelve el stock al eliminar el registro"""
         # Solo devolver el stock si no está expirado y hay cantidad temporal
-        if not self.expirado and self.cantidad_temp > 0:
-            self.producto.cantidad_en_stock += self.cantidad_temp
-            self.producto.save()
+        # if not self.expirado and self.cantidad_temp > 0:
+        #     self.producto.cantidad_en_stock += self.cantidad_temp
+        #     self.producto.save()
         super().delete(*args, **kwargs)
 
     def __str__(self):
