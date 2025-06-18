@@ -17,7 +17,7 @@ def start_scheduler():
         # Programar la verificación de carritos expirados cada minuto
         scheduler.add_job(
             func=verificar_carritos_expirados,
-            trigger=IntervalTrigger(minutes=1),
+            trigger=IntervalTrigger(minutes=3),
             id='verificar_carritos_expirados',
             name='Verificar carritos expirados cada minuto',
             replace_existing=True,

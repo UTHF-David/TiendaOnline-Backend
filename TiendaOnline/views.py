@@ -1000,3 +1000,4 @@ class CarritoTempViewSet(viewsets.ModelViewSet):
         return Response({
             'message': 'No hay productos expirados'
         })
+ 
