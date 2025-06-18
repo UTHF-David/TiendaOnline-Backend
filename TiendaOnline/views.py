@@ -446,7 +446,7 @@ class PedidoDetalleViewSet(viewsets.ModelViewSet):
             
             # Devolver el stock al producto
             producto = instance.producto
-            producto.cantidad_en_stock += instance.cantidad_prod
+            #producto.cantidad_en_stock += instance.cantidad_prod
             producto.save()
             
             # Eliminar el detalle
