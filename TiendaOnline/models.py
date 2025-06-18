@@ -207,7 +207,7 @@ class Producto(models.Model):
     def __str__(self):
         return f"{self.nombre} ({self.get_categoria_display()}) - Color: {self.colores}"
 
-    ###Pedido
+    ###carr
 
 class Pedido(models.Model):
     """Modelo para pedidos con relación a usuario y país ISV"""
@@ -543,7 +543,7 @@ class CarritoTemp(models.Model):
             return True # Ya está expirado
 
         # Definir el tiempo de inactividad permitido (ej. 60 segundos)
-        tiempo_inactividad_permitida = timedelta(seconds=60) 
+        tiempo_inactividad_permitida = timedelta(seconds=180) 
         
         # Comprobar si ha pasado el tiempo de inactividad desde la última actualización
         if (timezone.now() - self.fecha_actualizacion) > tiempo_inactividad_permitida:

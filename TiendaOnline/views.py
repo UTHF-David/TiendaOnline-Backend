@@ -602,7 +602,7 @@ class PedidoViewSet(viewsets.ModelViewSet):
                         total=total
                     )
 
-                    # Actualizar el stock
+                    # Actualizar el stock - eliminar el producto vendido
                     producto.cantidad_en_stock -= cantidad
                     producto.save()
 
