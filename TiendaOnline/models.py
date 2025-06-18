@@ -552,7 +552,7 @@ class CarritoTemp(models.Model):
             
             # Devolver el stock reservado al producto
             if self.cantidad_temp > 0:
-                self.producto.cantidad_en_stock += self.cantidad_temp
+                #self.producto.cantidad_en_stock += self.cantidad_temp
                 self.producto.save()
                 self.cantidad_temp = 0 # Resetear cantidad temporal después de devolver stock
 
