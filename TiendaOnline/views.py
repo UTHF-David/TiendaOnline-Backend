@@ -913,7 +913,7 @@ class CarritoTempViewSet(viewsets.ModelViewSet):
                 # la variable quedaria como 120 a pesar de que en la bd bajara por eso al devolverlo hacia
                 #una especie de duplicacion
 
-                instance.producto.cantidad_en_stock += cantidad 
+                #instance.producto.cantidad_en_stock += cantidad 
                 producto.save()
                 logger.info(f'Stock devuelto: {cantidad} unidades al producto {producto_id}')
             except Producto.DoesNotExist:
