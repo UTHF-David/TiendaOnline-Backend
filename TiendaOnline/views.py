@@ -906,18 +906,18 @@ class CarritoTempViewSet(viewsets.ModelViewSet):
             logger.info(f'Ítem {instance.id} eliminado del carrito')
             
             # 2. Intentar devolver el stock (si el producto existe)
-            try:
-                producto = Producto.objects.select_for_update().get(pk=producto_id)
-                # el error que duplicaba al borrar era que estaba en producto.cantidad_en_stock
-                # y nuez que lo duplicara sino que si habia 120 en stock y se añadian 4 productos el stock
-                # la variable quedaria como 120 a pesar de que en la bd bajara por eso al devolverlo hacia
-                #una especie de duplicacion
+            # try:
+            #     producto = Producto.objects.select_for_update().get(pk=producto_id)
+            #     # el error que duplicaba al borrar era que estaba en producto.cantidad_en_stock
+            #     # y nuez que lo duplicara sino que si habia 120 en stock y se añadian 4 productos el stock
+            #     # la variable quedaria como 120 a pesar de que en la bd bajara por eso al devolverlo hacia
+            #     #una especie de duplicacion
 
-                #instance.producto.cantidad_en_stock += cantidad 
-                producto.save()
-                logger.info(f'Stock devuelto: {cantidad} unidades al producto {producto_id}')
-            except Producto.DoesNotExist:
-                logger.warning(f'Producto {producto_id} no existe, no se devolvió stock')
+            #     #instance.producto.cantidad_en_stock += cantidad 
+            #     producto.save()
+            #     logger.info(f'Stock devuelto: {cantidad} unidades al producto {producto_id}')
+            # except Producto.DoesNotExist:
+            #     logger.warning(f'Producto {producto_id} no existe, no se devolvió stock')
             
             return Response(status=status.HTTP_204_NO_CONTENT)
             
