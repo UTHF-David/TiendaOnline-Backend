@@ -17,6 +17,11 @@ from decimal import Decimal, InvalidOperation
 from django.db import transaction
 import logging
 from django.views.decorators.csrf import csrf_exempt
+from .ably_client import ably_client
+
+def notificar_stock(producto_id, nuevo_stock):
+    channel = ably_client.channels.get('stock-updates')
+    channel.publish('actualizacion', {'producto_id': producto_id, 'nuevo_stock': nuevo_stock})
 
 logger = logging.getLogger(__name__)
 
