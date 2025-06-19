@@ -46,7 +46,7 @@ INSTALLED_APPS = [
     'TiendaOnline',
     'coreapi',    
     'rest_framework.authtoken',
-    'django_apscheduler',
+    'django_apscheduler'    
 ]
 
 MIDDLEWARE = [
