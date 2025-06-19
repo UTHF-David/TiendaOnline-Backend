@@ -2,26 +2,43 @@ from django.db import connection
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
-from TiendaOnline.models import Producto
-from TiendaOnline.serializer import ProductoSerializer
+from TiendaOnlineBack import settings
+import pusher
+
+
+pusher_client = pusher.Pusher(
+    app_id=settings.PUSHER_APP_ID,
+    key=settings.PUSHER_KEY,
+    secret=settings.PUSHER_SECRET,
+    cluster=settings.PUSHER_CLUSTER,
+    ssl=True
+)
 
 
 @api_view(['GET'])
-def stockvisible(request,id=None):
+def stockvisible(request, id=None):
     try:
         with connection.cursor() as cursor:
             cursor.callproc('sp_stock_productos', [id])
             stockproducto = cursor.fetchone()
 
         with connection.cursor() as cursor:        
-            cursor.callproc('sp_productotemp_total', [id,0])
+            cursor.callproc('sp_productotemp_total', [id, 0])
             cursor.execute('SELECT @_sp_productotemp_total_1')
             temptotal = cursor.fetchone()
-            # Convertimos a enteros y realizamos la operación
             results = int(stockproducto[0]) - int(temptotal[0])
-                
-            return Response(results, status=status.HTTP_200_OK)
             
+            # Notificar a todos los clientes sobre el stock actual
+            pusher_client.trigger(
+                f'producto-{id}',  # Canal específico para este producto
+                'stock-updated',    # Evento
+                {
+                    'producto_id': id,
+                    'stock_actual': results
+                }
+            )
+            
+            return Response(results, status=status.HTTP_200_OK)
     
     except Exception as e:
         return Response({

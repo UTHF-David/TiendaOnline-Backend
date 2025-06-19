@@ -46,8 +46,15 @@ INSTALLED_APPS = [
     'TiendaOnline',
     'coreapi',    
     'rest_framework.authtoken',
-    'django_apscheduler'    
+    'django_apscheduler',
+    'pusher'    
 ]
+
+PUSHER_APP_ID = '2010728'
+PUSHER_KEY = '4dbce86002977a403278'
+PUSHER_SECRET = '6efbbe4acbb21582c7e5'
+PUSHER_CLUSTER = 'us2'
+
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',

@@ -17,10 +17,72 @@ from decimal import Decimal, InvalidOperation
 from django.db import transaction
 import logging
 from django.views.decorators.csrf import csrf_exempt
+from TiendaOnlineBack import settings
+import pusher
+from django.db import connection
 
 
 
 logger = logging.getLogger(__name__)
+
+pusher_client = pusher.Pusher(
+    app_id=settings.PUSHER_APP_ID,
+    key=settings.PUSHER_KEY,
+    secret=settings.PUSHER_SECRET,
+    cluster=settings.PUSHER_CLUSTER,
+    ssl=True
+)
+
+@api_view(['POST'])
+def actualizar_stock(request, producto_id):
+    try:
+        producto = Producto.objects.get(id=producto_id)
+        cantidad = int(request.data.get('cantidad', 0))
+        
+        # Actualizar stock
+        producto.cantidad_en_stock += cantidad
+        producto.save()
+        
+        # Calcular stock disponible usando la misma lógica que stockvisible
+        with connection.cursor() as cursor:
+            cursor.callproc('sp_stock_productos', [producto_id])
+            stockproducto = cursor.fetchone()
+
+        with connection.cursor() as cursor:        
+            cursor.callproc('sp_productotemp_total', [producto_id, 0])
+            cursor.execute('SELECT @_sp_productotemp_total_1')
+            temptotal = cursor.fetchone()
+            stock_disponible = int(stockproducto[0]) - int(temptotal[0])
+        
+        # Notificar a todos los clientes en tiempo real
+        pusher_client.trigger(
+            f'producto-{producto_id}',  # Canal específico para este producto
+            'stock-updated',            # Evento
+            {
+                'producto_id': producto_id,
+                'stock_actual': stock_disponible,
+                'stock_total': int(stockproducto[0]),
+                'stock_temporal': int(temptotal[0]),
+                'operacion': 'añadir' if cantidad > 0 else 'restar',
+                'cantidad_cambiada': abs(cantidad),
+                'timestamp': timezone.now().isoformat()
+            }
+        )
+        
+        return Response({
+            'status': 'success',
+            'producto_id': producto_id,
+            'stock_disponible': stock_disponible,
+            'stock_total': int(stockproducto[0]),
+            'stock_temporal': int(temptotal[0]),
+            'operacion': 'añadir' if cantidad > 0 else 'restar',
+            'cantidad_cambiada': abs(cantidad)
+        })
+        
+    except Producto.DoesNotExist:
+        return Response({'error': 'Producto no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 class ProductoViewSet(viewsets.ModelViewSet):
     """
@@ -41,6 +103,7 @@ class ProductoViewSet(viewsets.ModelViewSet):
     parser_classes = [MultiPartParser, FormParser]
     queryset = Producto.objects.all()
     serializer_class = ProductoSerializer
+    
 
     def create(self, request, *args, **kwargs):
         """
@@ -840,14 +903,20 @@ class CarritoTempViewSet(viewsets.ModelViewSet):
                         status=status.HTTP_400_BAD_REQUEST
                     )
                 
-                carrito_existente.cantidad_prod = nueva_cantidad,
-                carrito_existente.super().save()
+                carrito_existente.cantidad_prod = nueva_cantidad
+                carrito_existente.save()
                                     
-                #si davis pregunta yo lo comente pq l odescubri
-
-                # # Reservar stock
-                # producto.cantidad_en_stock -= cantidad
-                # producto.save()
+                # Notificar cambio en tiempo real
+                pusher_client.trigger(
+                    f'producto-{producto_id}',
+                    'carrito-updated',
+                    {
+                        'producto_id': producto_id,
+                        'accion': 'actualizado',
+                        'cantidad_carrito': nueva_cantidad,
+                        'usuario_id': request.user.id
+                    }
+                )
                 
                 serializer = self.get_serializer(carrito_existente)
                 return Response(serializer.data, status=status.HTTP_200_OK)
@@ -863,13 +932,20 @@ class CarritoTempViewSet(viewsets.ModelViewSet):
                 serializer = self.get_serializer(data=data)
                 serializer.is_valid(raise_exception=True)
                 
-                #tambien la descubri yo
-
-                # Reservar stock antes de crear el ítem
-                # producto.cantidad_en_stock -= cantidad
-                # producto.save()
-                
                 self.perform_create(serializer)
+                
+                # Notificar cambio en tiempo real
+                pusher_client.trigger(
+                    f'producto-{producto_id}',
+                    'carrito-updated',
+                    {
+                        'producto_id': producto_id,
+                        'accion': 'agregado',
+                        'cantidad_carrito': cantidad,
+                        'usuario_id': request.user.id
+                    }
+                )
+                
                 headers = self.get_success_headers(serializer.data)
                 return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
@@ -906,6 +982,18 @@ class CarritoTempViewSet(viewsets.ModelViewSet):
             # 1. Eliminar primero el ítem del carrito
             self.perform_destroy(instance)
             logger.info(f'Ítem {instance.id} eliminado del carrito')
+            
+            # Notificar cambio en tiempo real
+            pusher_client.trigger(
+                f'producto-{producto_id}',
+                'carrito-updated',
+                {
+                    'producto_id': producto_id,
+                    'accion': 'eliminado',
+                    'cantidad_eliminada': cantidad,
+                    'usuario_id': request.user.id
+                }
+            )
             
             # 2. Intentar devolver el stock (si el producto existe)
             # try:

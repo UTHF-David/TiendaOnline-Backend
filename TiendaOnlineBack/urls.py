@@ -22,6 +22,7 @@ from rest_framework.documentation import include_docs_urls # Importa la función
 from django.views.static import serve # Importa la vista para servir archivos estáticos
 from TiendaOnline.views import UsuarioViewSet
 from TiendaOnline.conexion import stockvisible
+from TiendaOnline.views import actualizar_stock
 
 
 urlpatterns = [
@@ -29,6 +30,8 @@ urlpatterns = [
     path('api/v1/', include('TiendaOnline.urls')), # Incluye las URLs de la aplicación 'tienda'
     path('media/<path:path>', serve, {'document_root': settings.MEDIA_ROOT}),
     path('docs/', include_docs_urls(title='API Documentation')), # Incluye la documentación de la API
+    path('stockvisible/<int:id>/', stockvisible, name='stock-visible'),
+    path('producto/<int:producto_id>/actualizar-stock/', actualizar_stock, name='actualizar_stock'),
     path('stockvisible/<int:id>/', stockvisible, name='stock-visible'),
     
     #tokens

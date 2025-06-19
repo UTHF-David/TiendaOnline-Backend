@@ -11,3 +11,4 @@ django_apscheduler==0.7.0
 # Dependencias recomendadas para producción (añade estas)
 waitress==2.1.2  # Servidor ligero para producción
 python-dotenv==1.0.0  # Para manejar variables de entorno
+pusher == 3.3.3
