@@ -46,11 +46,8 @@ INSTALLED_APPS = [
     'TiendaOnline',
     'coreapi',    
     'rest_framework.authtoken',
-    'django_apscheduler',
-    'x-csrftoken',
-    'x-requested-with',
-    'x-pusher-client',
-    'x-pusher-version'
+    'django_apscheduler',        
+    'pusher'    
 ]
 
 PUSHER_APP_ID = '2010728'
