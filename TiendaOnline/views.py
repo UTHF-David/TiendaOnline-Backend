@@ -123,7 +123,7 @@ class ProductoViewSet(viewsets.ModelViewSet):
             if 'imagen' in request.FILES:
                 imagen_file = request.FILES['imagen']
                 imagen_data = imagen_file.read()
-                data['image'] = base64.b64encode(imagen_data).decode('utf-8mb3')
+                data['image'] = base64.b64encode(imagen_data).decode('utf-8')
             
             serializer = self.get_serializer(data=data)
             serializer.is_valid(raise_exception=True)
