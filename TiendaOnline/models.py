@@ -167,10 +167,10 @@ class Producto(models.Model):
         verbose_name='Categoría',
         null=False
     )
-    tamaño  = models.CharField(
+    tamano  = models.CharField(
         max_length=3,
         choices=TAMANO_CHOICES,
-        verbose_name='Tamaño',
+        verbose_name='tamano',
         help_text='Tamaño del producto',
         blank=True,
         null=True
