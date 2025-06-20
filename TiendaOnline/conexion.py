@@ -19,7 +19,7 @@ pusher_client = pusher.Pusher(
 def stockvisible(request, id=None):
     try:
         with connection.cursor() as cursor:
-            cursor.callproc('sp_stock_productos', [id])
+            cursor.callproc('sp_stock_producto', [id])
             stockproducto = cursor.fetchone()
 
         with connection.cursor() as cursor:        

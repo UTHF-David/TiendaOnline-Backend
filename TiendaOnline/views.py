@@ -45,7 +45,7 @@ def actualizar_stock(request, producto_id):
         
         # Calcular stock disponible usando la misma lógica que stockvisible
         with connection.cursor() as cursor:
-            cursor.callproc('sp_stock_productos', [producto_id])
+            cursor.callproc('sp_stock_producto', [producto_id])
             stockproducto = cursor.fetchone()
 
         with connection.cursor() as cursor:        
