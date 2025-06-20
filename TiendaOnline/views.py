@@ -983,18 +983,6 @@ class CarritoTempViewSet(viewsets.ModelViewSet):
             self.perform_destroy(instance)
             logger.info(f'Ítem {instance.id} eliminado del carrito')
             
-            # Notificar cambio en tiempo real
-            pusher_client.trigger(
-                f'producto-{producto_id}',
-                'carrito-updated',
-                {
-                    'producto_id': producto_id,
-                    'accion': 'eliminado',
-                    'cantidad_eliminada': cantidad,
-                    'usuario_id': request.user.id
-                }
-            )
-            
             # 2. Intentar devolver el stock (si el producto existe)
             # try:
             #     producto = Producto.objects.select_for_update().get(pk=producto_id)

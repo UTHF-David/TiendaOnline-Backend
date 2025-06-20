@@ -47,7 +47,10 @@ INSTALLED_APPS = [
     'coreapi',    
     'rest_framework.authtoken',
     'django_apscheduler',
-    'pusher'    
+    'x-csrftoken',
+    'x-requested-with',
+    'x-pusher-client',
+    'x-pusher-version'
 ]
 
 PUSHER_APP_ID = '2010728'
