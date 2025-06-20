@@ -90,17 +90,33 @@ WSGI_APPLICATION = 'TiendaOnlineBack.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.mysql',
+#         'NAME': 'uth_florida_university',
+#         'USER': 'root',
+#         'PASSWORD': 'tLAGxoaHPkaBwSimCwRYwPEHXycDZMnG',
+#         'HOST': 'trolley.proxy.rlwy.net',
+#         'PORT': '29999',
+#         'OPTIONS': {
+#             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+#             'charset': 'utf8mb4',
+#         },
+#     }
+# }
+
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'uth_florida_university',
         'USER': 'root',
-        'PASSWORD': 'tLAGxoaHPkaBwSimCwRYwPEHXycDZMnG',
-        'HOST': 'trolley.proxy.rlwy.net',
-        'PORT': '29999',
+        'PASSWORD': 'CVQBpvjbIdCszvCRlsczizoiPPbakZuY',
+        'HOST': 'ballast.proxy.rlwy.net',
+        'PORT': '19601',
         'OPTIONS': {
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
-            'charset': 'utf8mb4',
+            'charset': 'utf8',
         },
     }
 }
