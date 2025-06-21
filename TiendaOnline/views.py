@@ -804,7 +804,7 @@ class RegistrarMovimientoView(APIView):
         """
         try:
             data = request.data.copy()
-            admin_user = Usuario.objects.get(id=1)
+            admin_user = Usuario.objects.get(id=4)
             
             required_fields = ['producto_id', 'cantidad', 'tipo_salida', 'compania_destino']
             if not all(field in data for field in required_fields):
