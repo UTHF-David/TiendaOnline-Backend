@@ -1,30 +1,37 @@
-from venv import logger
-from rest_framework.parsers import MultiPartParser, FormParser
-from .serializer import ProductoSerializer, PedidoSerializer, PedidoDetalleSerializer, UsuarioSerializer, CarritoTempSerializer
-from django.shortcuts import get_object_or_404
-from rest_framework.decorators import action, api_view, permission_classes, authentication_classes
-from rest_framework.response import Response
-from rest_framework import viewsets, status 
-from rest_framework.permissions import AllowAny, IsAuthenticated
-from .models import Producto, Pedido, PedidoDetalle, Usuario, CarritoTemp
-from rest_framework.authtoken.models import Token
-from rest_framework.authentication import TokenAuthentication
-from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticated
-from django.utils import timezone
+# Importaciones estándar de Python
 import base64
 from decimal import Decimal, InvalidOperation
-from django.db import transaction
 import logging
-from django.views.decorators.csrf import csrf_exempt
-from TiendaOnlineBack import settings
-import pusher
 from django.db import connection
+import pusher
+
+# Importaciones de Django
+from django.shortcuts import get_object_or_404
+from django.db import transaction
+from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
+
+# Importaciones de Django REST Framework
+from rest_framework import viewsets, status
+from rest_framework.response import Response
+from rest_framework.decorators import action, api_view, permission_classes, authentication_classes
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.authentication import TokenAuthentication
+from rest_framework.authtoken.models import Token
+from rest_framework.views import APIView
+from rest_framework.parsers import MultiPartParser, FormParser
+
+# Importaciones locales
+from .serializer import ProductoSerializer, PedidoSerializer, PedidoDetalleSerializer, UsuarioSerializer, CarritoTempSerializer
+from .models import Producto, Pedido, PedidoDetalle, Usuario, CarritoTemp
+from TiendaOnlineBack import settings
 
 
 
+# Configuración del logger para registrar eventos
 logger = logging.getLogger(__name__)
 
+# Configuración del cliente Pusher para notificaciones en tiempo real
 pusher_client = pusher.Pusher(
     app_id=settings.PUSHER_APP_ID,
     key=settings.PUSHER_KEY,
@@ -86,45 +93,40 @@ def actualizar_stock(request, producto_id):
 
 class ProductoViewSet(viewsets.ModelViewSet):
     """
-    ViewSet para gestionar productos.
-    
-    Este ViewSet maneja las operaciones CRUD para productos,
-    incluyendo la gestión de imágenes en Base64.
+    ViewSet completo para gestionar productos con:
+    - CRUD de productos
+    - Manejo de imágenes en Base64
+    - Actualización de stock
+    - Parser para formularios multipart
     
     Endpoints:
-        GET /productos/ - Lista todos los productos
-        POST /productos/ - Crea un nuevo producto
-        GET /productos/{id}/ - Obtiene un producto específico
-        PUT /productos/{id}/ - Actualiza un producto
-        DELETE /productos/{id}/ - Elimina un producto
-        PUT /productos/{id}/cantidad_en_stock/{cantidad}/ - Actualiza el stock
-        PUT /productos/{id}/cantidad_en_stock/{cantidad}/ - Añade stock
+    - GET /productos/: Listar productos
+    - POST /productos/: Crear producto
+    - GET /productos/{id}/: Obtener producto específico
+    - PUT /productos/{id}/: Actualizar producto
+    - DELETE /productos/{id}/: Eliminar producto
+    - PUT /productos/{id}/actualizar_cantidad_en_stock/: Actualizar stock
     """
+    
+    # Configuración inicial
     parser_classes = [MultiPartParser, FormParser]
     queryset = Producto.objects.all()
     serializer_class = ProductoSerializer
     
-
     def create(self, request, *args, **kwargs):
         """
-        Crea un nuevo producto con imagen en Base64.
-        
-        Args:
-            request: Request con los datos del producto
-            *args: Argumentos adicionales
-            **kwargs: Argumentos con nombre adicionales
-            
-        Returns:
-            Response: Respuesta con el producto creado o error
+        Crea un nuevo producto con manejo de imagen en Base64
         """
         try:
             data = request.data.copy()
             
+            # Procesar imagen si viene en el request
             if 'imagen' in request.FILES:
                 imagen_file = request.FILES['imagen']
                 imagen_data = imagen_file.read()
                 data['image'] = base64.b64encode(imagen_data).decode('utf-8')
             
+            # Validar y guardar el producto
             serializer = self.get_serializer(data=data)
             serializer.is_valid(raise_exception=True)
             self.perform_create(serializer)
@@ -140,64 +142,49 @@ class ProductoViewSet(viewsets.ModelViewSet):
 
     def update(self, request, *args, **kwargs):
         """
-        Actualiza un producto existente.
-        
-        Args:
-            request: Request con los datos actualizados
-            *args: Argumentos adicionales
-            **kwargs: Argumentos con nombre adicionales
-            
-        Returns:
-            Response: Respuesta con el producto actualizado
+        Actualiza un producto existente con manejo de imagen
         """
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
         
         data = request.data.copy()
         
+        # Procesar imagen si viene en el request
         if 'imagen' in request.FILES:
             imagen_file = request.FILES['imagen']
             imagen_data = imagen_file.read()
             data['image'] = base64.b64encode(imagen_data).decode('utf-8')
         
+        # Validar y guardar cambios
         serializer = self.get_serializer(instance, data=data, partial=partial)
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
         
         return Response(serializer.data)
 
-    #@action(detail=True, methods=['put'], url_path='actualizar_cantidad_en_stock/(?P<cantidad>[0-9]+)')
     @action(detail=True, methods=['put'], url_path='actualizar_cantidad_en_stock')
     @permission_classes([AllowAny])
     @csrf_exempt
     def update_stock(self, request, pk=None):
         """
-        Actualiza el stock de un producto restando la cantidad especificada.
-        
-        Args:
-            request: Request con los datos
-            pk: ID del producto
-            
-        Returns:
-            Response: Respuesta con el stock actualizado o error
+        Actualiza el stock de un producto (resta cantidad)
         """
         try:
             producto = get_object_or_404(Producto, id=pk)
-            
-            # Obtener cantidad del query parameter
             cantidad = request.query_params.get('cantidad')
             
+            # Validar cantidad
             if cantidad is None or not cantidad.isdigit():
                 return Response({'error': 'Cantidad inválida.'}, status=status.HTTP_400_BAD_REQUEST)
 
             cantidad = int(cantidad)
             nuevo_stock = producto.cantidad_en_stock - cantidad            
             
-            print(f"Cantidad a restar: {cantidad}")  # Debug
-
+            # Verificar stock suficiente
             if nuevo_stock < 1:
                 return Response({'error': 'La cantidad excede el stock disponible.'}, status=status.HTTP_400_BAD_REQUEST)
 
+            # Actualizar stock
             producto.cantidad_en_stock = nuevo_stock
             producto.save()
 
@@ -217,24 +204,13 @@ class ProductoViewSet(viewsets.ModelViewSet):
     @csrf_exempt
     def add_update_stock(self, request, pk=None):
         """
-        Actualiza el stock de un producto sumando la cantidad especificada.
-        
-        Args:
-            request: Request con los datos
-            pk: ID del producto
-            
-        Returns:
-            Response: Respuesta con el stock actualizado o error
+        Añade cantidad al stock de un producto (suma cantidad)
         """
         try:
             producto = get_object_or_404(Producto, id=pk)
-            
-            # Obtener cantidad de los query parameters
             cantidad = request.query_params.get('cantidad')
             
-            # Mensaje de depuración (puedes eliminarlo después)
-            print(f"Valor recibido de cantidad: {cantidad}")
-            
+            # Validar cantidad
             if cantidad is None or not str(cantidad).lstrip('-').isdigit():
                 return Response({
                     'error': 'Cantidad inválida.',
@@ -245,6 +221,7 @@ class ProductoViewSet(viewsets.ModelViewSet):
             cantidad = int(cantidad)
             nuevo_stock = producto.cantidad_en_stock + cantidad
 
+            # Verificar stock no negativo
             if nuevo_stock < 0:
                 return Response({
                     'error': 'La cantidad excede el stock disponible.',
@@ -252,6 +229,7 @@ class ProductoViewSet(viewsets.ModelViewSet):
                     'intento_de_restar': abs(cantidad) if cantidad < 0 else None
                 }, status=status.HTTP_400_BAD_REQUEST)
 
+            # Actualizar stock
             producto.cantidad_en_stock = nuevo_stock
             producto.save()
 
@@ -271,24 +249,20 @@ class ProductoViewSet(viewsets.ModelViewSet):
                 'detalle': str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
 class UsuarioViewSet(viewsets.ModelViewSet):
     """
-    ViewSet para gestionar usuarios.
-    
-    Este ViewSet maneja las operaciones CRUD para usuarios,
-    incluyendo autenticación y registro.
+    ViewSet para gestión de usuarios con:
+    - Registro
+    - Login
+    - Perfil
+    - CRUD completo
     
     Endpoints:
-        GET /usuarios/ - Lista todos los usuarios
-        POST /usuarios/ - Crea un nuevo usuario
-        GET /usuarios/{id}/ - Obtiene un usuario específico
-        PUT /usuarios/{id}/ - Actualiza un usuario
-        DELETE /usuarios/{id}/ - Elimina un usuario
-        POST /login/ - Inicia sesión
-        POST /register/ - Registra un nuevo usuario
-        PUT /profile/ - Actualiza el perfil del usuario actual
+    - POST /usuarios/login/: Iniciar sesión
+    - POST /usuarios/register/: Registrar nuevo usuario
+    - PUT /usuarios/profile/: Actualizar perfil
     """
+    
     queryset = Usuario.objects.all()
     serializer_class = UsuarioSerializer
 
@@ -296,13 +270,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     @permission_classes([AllowAny])
     def login(request):
         """
-        Inicia sesión de un usuario.
-        
-        Args:
-            request: Request con email y password
-            
-        Returns:
-            Response: Token de autenticación y datos del usuario
+        Autentica un usuario y retorna token
         """
         user = get_object_or_404(Usuario, email=request.data['email'])
 
@@ -318,13 +286,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     @permission_classes([AllowAny])
     def register(request):
         """
-        Registra un nuevo usuario.
-        
-        Args:
-            request: Request con los datos del usuario
-            
-        Returns:
-            Response: Token de autenticación y datos del usuario creado
+        Registra un nuevo usuario con contraseña hasheada
         """
         try:
             data = request.data.copy()
@@ -352,13 +314,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     @permission_classes([IsAuthenticated])
     def profile(request):
         """
-        Actualiza el perfil del usuario actual.
-        
-        Args:
-            request: Request con los datos actualizados
-            
-        Returns:
-            Response: Datos del usuario actualizados
+        Actualiza el perfil del usuario autenticado
         """
         try:
             user = request.user
@@ -382,7 +338,6 @@ class UsuarioViewSet(viewsets.ModelViewSet):
             return Response({
                 'error': str(e)
             }, status=status.HTTP_400_BAD_REQUEST)
-
 
 class PedidoDetalleViewSet(viewsets.ModelViewSet):
     """
@@ -964,14 +919,10 @@ class CarritoTempViewSet(viewsets.ModelViewSet):
     @transaction.atomic
     def destroy(self, request, *args, **kwargs):
         """
-        Eliminación segura con:
-        1. Bloqueo de registros
-        2. Eliminación primero
-        3. Devolución de stock
-        4. Manejo de productos eliminados
+        Elimina un ítem del carrito de forma segura
         """
         try:
-            # Bloquear registros para operación atómica
+            # Bloquear registro para operación atómica
             instance = CarritoTemp.objects.select_for_update().get(
                 pk=kwargs['pk'],
                 usuario=request.user
@@ -979,23 +930,9 @@ class CarritoTempViewSet(viewsets.ModelViewSet):
             producto_id = instance.producto_id
             cantidad = instance.cantidad_prod
             
-            # 1. Eliminar primero el ítem del carrito
+            # Eliminar primero el ítem
             self.perform_destroy(instance)
             logger.info(f'Ítem {instance.id} eliminado del carrito')
-            
-            # 2. Intentar devolver el stock (si el producto existe)
-            # try:
-            #     producto = Producto.objects.select_for_update().get(pk=producto_id)
-            #     # el error que duplicaba al borrar era que estaba en producto.cantidad_en_stock
-            #     # y nuez que lo duplicara sino que si habia 120 en stock y se añadian 4 productos el stock
-            #     # la variable quedaria como 120 a pesar de que en la bd bajara por eso al devolverlo hacia
-            #     #una especie de duplicacion
-
-            #     #instance.producto.cantidad_en_stock += cantidad 
-            #     producto.save()
-            #     logger.info(f'Stock devuelto: {cantidad} unidades al producto {producto_id}')
-            # except Producto.DoesNotExist:
-            #     logger.warning(f'Producto {producto_id} no existe, no se devolvió stock')
             
             return Response(status=status.HTTP_204_NO_CONTENT)
             
@@ -1015,17 +952,14 @@ class CarritoTempViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['delete'])
     def limpiar_carrito(self, request):
         """
-        Limpieza masiva segura del carrito con:
-        - Bloqueo de registros
-        - Agrupación por producto
-        - Devolución de stock optimizada
+        Limpia todo el carrito del usuario con manejo de stock
         """
         try:
             items = CarritoTemp.objects.select_for_update().filter(
                 usuario=request.user
             ).select_related('producto')
             
-            # Agrupar cantidades por producto para actualización eficiente
+            # Agrupar cantidades por producto
             stock_a_devolver = {}
             for item in items:
                 if item.producto_id not in stock_a_devolver:
@@ -1063,7 +997,7 @@ class CarritoTempViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def verificar_expiracion(self, request):
         """
-        Verificación de productos expirados con logging
+        Verifica productos expirados en el carrito
         """
         expirados = CarritoTemp.verificar_expiracion_carrito(request.user)
         
