@@ -294,20 +294,14 @@ El sistema utiliza Pusher para notificaciones en tiempo real:
 4. Push a la rama (`git push origin feature/nueva-funcionalidad`)
 5. Crear Pull Request
 
-## 📝 Licencia
-
-Este proyecto está bajo la Licencia MIT. Ver el archivo `LICENSE` para más detalles.
-
 ## 👥 Autores
 
-- **Desarrollador Principal** - [Tu Nombre]
-- **Contribuidores** - [Lista de contribuidores]
+- **Desarrollador Principal** - [Ivan Barahona]
 
 ## 📞 Soporte
 
 Para soporte técnico o preguntas:
 - Email: [igyt2015@gmail.com]
-- Issues: [Crear issue en GitHub]
 - Documentación: `/docs/` en el servidor
 
 ---
