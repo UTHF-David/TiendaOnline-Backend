@@ -783,7 +783,7 @@ class RegistrarMovimientoView(APIView):
                 zip=admin_user.zip or "00000",
                 correo=admin_user.email,
                 telefono=admin_user.telefono or "00000000",
-                estado_compra='Entregado',
+                estado_compra='Recibido',
                 desc_adicional=f"{data['tipo_salida']} - {data.get('descripcion', '')}",
                 fecha_entrega=timezone.now(),
                 es_movimiento_interno=True
