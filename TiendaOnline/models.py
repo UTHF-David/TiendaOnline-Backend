@@ -6,8 +6,30 @@ from decimal import Decimal
 from django.utils import timezone
 from datetime import timedelta # Asegúrate de importar timedelta aquí
 
+# =============================================================================
+# MANAGER PERSONALIZADO PARA USUARIOS
+# =============================================================================
 class UsuarioManager(BaseUserManager):
+    """
+    Manager personalizado para el modelo Usuario.
+    Permite crear usuarios usando email en lugar de username.
+    """
+    
     def create_user(self, email, password=None, **extra_fields):
+        """
+        Crea y guarda un usuario regular con el email y contraseña dados.
+        
+        Args:
+            email: Email del usuario (obligatorio)
+            password: Contraseña del usuario
+            **extra_fields: Campos adicionales del usuario
+            
+        Returns:
+            Usuario: Instancia del usuario creado
+            
+        Raises:
+            ValueError: Si el email no se proporciona
+        """
         if not email:
             raise ValueError('El Email es obligatorio')
         email = self.normalize_email(email)
@@ -17,6 +39,17 @@ class UsuarioManager(BaseUserManager):
         return user
 
     def create_superuser(self, email, password=None, **extra_fields):
+        """
+        Crea y guarda un superusuario con el email y contraseña dados.
+        
+        Args:
+            email: Email del superusuario
+            password: Contraseña del superusuario
+            **extra_fields: Campos adicionales
+            
+        Returns:
+            Usuario: Instancia del superusuario creado
+        """
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
         extra_fields.setdefault('is_active', True)
@@ -29,20 +62,31 @@ class UsuarioManager(BaseUserManager):
     def __str__(self):
         return f"{self.pais} (Envío: ${self.costo_envio_pais})"
 
-
-##USUARIO
-#se usa abstract para cuando se utiliza el email como login,campos_adicionales,etc
+# =============================================================================
+# MODELO DE USUARIO PERSONALIZADO
+# =============================================================================
 class Usuario(AbstractUser):
-    """Modelo extendido de usuario con todos los campos requeridos"""
+    """
+    Modelo extendido de usuario con todos los campos requeridos para una tienda online.
+    
+    Características principales:
+    - Usa email como campo de autenticación principal
+    - Incluye campos adicionales para información de cliente
+    - Extiende el modelo AbstractUser de Django
+    """
     id = models.AutoField(primary_key=True)
 
-    username = None  # Deshabilitamos el campo username
+    # Deshabilitamos el campo username para usar email como login
+    username = None  
+    
+    # Campo principal de autenticación
     email = models.EmailField(
         verbose_name='Correo Electrónico',
         unique=True,
         null=False
     )
     
+    # Información personal del cliente
     nombre_cliente = models.CharField(
         max_length=100,
         verbose_name='Nombre del Cliente',
@@ -53,6 +97,8 @@ class Usuario(AbstractUser):
         verbose_name='Apellido del Cliente',
         null=True
     )
+    
+    # Información de dirección
     direccion = models.TextField(
         verbose_name='Dirección',
         null=True
@@ -83,12 +129,13 @@ class Usuario(AbstractUser):
         null=True
     )
 
+    # Relaciones con grupos y permisos (heredadas de AbstractUser)
     groups = models.ManyToManyField(
         Group,
         verbose_name='groups',
         blank=True,
         help_text='The groups this user belongs to. A user will get all permissions granted to each of their groups.',
-        related_name="tienda_usuario_set",  # Nombre único
+        related_name="tienda_usuario_set",  # Nombre único para evitar conflictos
         related_query_name="tienda_usuario",
     )
     user_permissions = models.ManyToManyField(
@@ -96,33 +143,48 @@ class Usuario(AbstractUser):
         verbose_name='user permissions',
         blank=True,
         help_text='Specific permissions for this user.',
-        related_name="tienda_usuario_set",  # Nombre único
+        related_name="tienda_usuario_set",  # Nombre único para evitar conflictos
         related_query_name="tienda_usuario",
     )
 
-    objects = UsuarioManager()  # Usamos nuestro manager personalizado
+    # Usamos nuestro manager personalizado
+    objects = UsuarioManager()
 
-    # Campos de autenticación
-    USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['nombre_cliente', 'apellido_cliente']
+    # Configuración de autenticación
+    USERNAME_FIELD = 'email'  # Campo usado para login
+    REQUIRED_FIELDS = ['nombre_cliente', 'apellido_cliente']  # Campos requeridos para crear superusuario
 
     class Meta:
         verbose_name = 'Usuario'
         verbose_name_plural = 'Usuarios'
 
     def __str__(self):
+        """Representación en string del usuario"""
         return f"{self.nombre_cliente} {self.apellido_cliente} ({self.email})"
 
-    ###Productos
-
+# =============================================================================
+# MODELO DE PRODUCTO
+# =============================================================================
 class Producto(models.Model):
-    """Modelo para productos con color hexadecimal único"""
+    """
+    Modelo para productos con color hexadecimal único.
+    
+    Características:
+    - Categorías por género (Mujeres, Hombres, Unisex)
+    - Tamaños disponibles (S, M, L, XL, XXL)
+    - Colores en formato hexadecimal
+    - Imágenes almacenadas en Base64
+    - Control de stock
+    """
+    
+    # Opciones para categorías de productos
     CATEGORIA_CHOICES = [
         ('M', 'Mujeres'),
         ('H', 'Hombres'),
         ('U', 'Unisex')
     ]
     
+    # Opciones para tamaños de productos
     TAMANO_CHOICES = [
         ('S', 'S'),
         ('M', 'M'),
@@ -131,6 +193,7 @@ class Producto(models.Model):
         ('XXL', 'XXL')
     ]
     
+    # Campos básicos del producto
     id = models.AutoField(primary_key=True)
     nombre = models.CharField(
         max_length=255,
@@ -141,13 +204,13 @@ class Producto(models.Model):
         max_digits=10,
         decimal_places=2,
         verbose_name='Precio',
-        validators=[MinValueValidator(0.01)],
+        validators=[MinValueValidator(0.01)],  # Precio mínimo de 0.01
         null=False
     )
     cantidad_en_stock = models.PositiveIntegerField(
         verbose_name='Stock',
         help_text='Cantidad disponible en inventario',
-        validators=[MinValueValidator(0)],
+        validators=[MinValueValidator(0)],  # Stock no puede ser negativo
         null=False
     )
     desc_prod = models.TextField(
@@ -155,19 +218,23 @@ class Producto(models.Model):
         blank=True,
         null=True
     )
+    
+    # Imagen almacenada como Base64 (para evitar dependencias de archivos)
     image = models.TextField(
         verbose_name='Imagen en Base64',
         help_text='Imagen del producto codificada en Base64',
         blank=True,
         null=True
     )
+    
+    # Categorización del producto
     categoria = models.CharField(
         max_length=3,
         choices=CATEGORIA_CHOICES,
         verbose_name='Categoría',
         null=False
     )
-    tamano  = models.CharField(
+    tamano = models.CharField(
         max_length=3,
         choices=TAMANO_CHOICES,
         verbose_name='tamano',
@@ -175,6 +242,8 @@ class Producto(models.Model):
         blank=True,
         null=True
     )
+    
+    # Color en formato hexadecimal con validación
     colores = models.CharField(
         max_length=7,
         verbose_name='Color Hexadecimal',
@@ -207,10 +276,22 @@ class Producto(models.Model):
     def __str__(self):
         return f"{self.nombre} ({self.get_categoria_display()}) - Color: {self.colores}"
 
-    ###carr
-
+# =============================================================================
+# MODELO DE PEDIDO
+# =============================================================================
 class Pedido(models.Model):
-    """Modelo para pedidos con relación a usuario y país ISV"""
+    """
+    Modelo para pedidos con relación a usuario y país ISV.
+    
+    Características:
+    - Gestión completa de pedidos de clientes
+    - Estados de pedido (Pagado, En Camino, Recibido, Cancelado)
+    - Información de envío completa
+    - Cálculo automático de totales
+    - Soporte para movimientos internos
+    """
+    
+    # Estados posibles de un pedido
     ESTADO_CHOICES = [
         ('Pagado', 'Pagado'),
         ('En Camino', 'En Camino'),
@@ -218,21 +299,28 @@ class Pedido(models.Model):
         ('Cancelado', 'Cancelado')
     ]
     
+    # Identificador único del pedido
     id_pedido = models.AutoField(primary_key=True)
+    
+    # Relación con el usuario que realizó el pedido
     usuario = models.ForeignKey(
         Usuario,
         on_delete=models.CASCADE,
         related_name='pedidos',
         verbose_name='Usuario',
-        null=True,  # Temporalmente permitimos nulos
+        null=True,  # Temporalmente permitimos nulos para pedidos sin usuario
         blank=True  # Temporalmente permitimos en blanco
     )
+    
+    # Información de la empresa (opcional)
     company = models.CharField(
         max_length=255,
         verbose_name='Compañía',
         blank=True,
         null=True
     )
+    
+    # Información de dirección de envío
     direccion = models.TextField(
         verbose_name='Dirección de Envío',
         null=False
@@ -257,6 +345,8 @@ class Pedido(models.Model):
         verbose_name='Código Postal',
         null=False
     )
+    
+    # Información de contacto
     correo = models.EmailField(
         verbose_name='Correo Electrónico',
         null=False
@@ -266,17 +356,23 @@ class Pedido(models.Model):
         verbose_name='Teléfono',
         null=False
     )
+    
+    # Estado actual del pedido
     estado_compra = models.CharField(
         max_length=20,
         choices=ESTADO_CHOICES,
         default='Pagado',
         verbose_name='Estado del Pedido'        
     )
+    
+    # Información adicional del pedido
     desc_adicional = models.TextField(
         verbose_name='Descripción Adicional',
         blank=True,
         null=True
     )
+    
+    # Fechas importantes
     fecha_compra = models.DateTimeField(
         auto_now_add=True,
         verbose_name='Fecha de Creación',
@@ -287,6 +383,8 @@ class Pedido(models.Model):
         blank=True,
         verbose_name='Fecha de Entrega'
     )
+    
+    # Flag para identificar movimientos internos (no comerciales)
     es_movimiento_interno = models.BooleanField(
         default=False,
         verbose_name='Movimiento interno (no comercial)')
@@ -294,12 +392,16 @@ class Pedido(models.Model):
     class Meta:
         verbose_name = 'Pedido'
         verbose_name_plural = 'Pedidos'
-        ordering = ['-fecha_compra']
+        ordering = ['-fecha_compra']  # Ordenar por fecha de compra descendente
     
     def save(self, *args, **kwargs):
-        """Autocompleta datos del usuario si no se especifican"""
+        """
+        Autocompleta datos del usuario si no se especifican.
+        Solo se ejecuta para nuevos pedidos.
+        """
         if not self.pk:  # Solo para nuevos pedidos
             if not all([self.direccion, self.ciudad, self.zip, self.telefono, self.correo]):
+                # Si faltan datos de envío, usar los del usuario
                 self.direccion = self.usuario.direccion
                 self.ciudad = self.usuario.ciudad
                 self.zip = self.usuario.zip
@@ -312,17 +414,27 @@ class Pedido(models.Model):
     
     @property
     def total_pedido(self):
-        """Calcula el total sumando todos los detalles"""
+        """Calcula el total sumando todos los detalles del pedido"""
         return sum(detalle.total for detalle in self.detalles.all())
     
     def __str__(self):
         return f"Pedido #{self.id_pedido} - {self.usuario.nombre_cliente}"
 
-
-##PEDIDO DETALLE
-
+# =============================================================================
+# MODELO DE DETALLE DE PEDIDO
+# =============================================================================
 class PedidoDetalle(models.Model):
-    """Modelo para detalles de pedido con cálculos automáticos"""
+    """
+    Modelo para detalles de pedido con cálculos automáticos.
+    
+    Características:
+    - Relación con pedido y producto
+    - Cálculo automático de subtotales, ISV, envío y total
+    - Validaciones de cantidades y precios
+    - Gestión de impuestos por país
+    """
+    
+    # Relación con el pedido principal
     pedido = models.ForeignKey(
         Pedido,
         on_delete=models.CASCADE,
@@ -330,41 +442,47 @@ class PedidoDetalle(models.Model):
         verbose_name='Pedido',
         null=False
     )
+    
+    # Producto incluido en el detalle
     producto = models.ForeignKey(
         Producto,
         on_delete=models.CASCADE,
         verbose_name='Producto',
         null=False
     )
+    
+    # Cantidad del producto
     cantidad_prod = models.PositiveIntegerField(
-        validators=[MinValueValidator(1)],
+        validators=[MinValueValidator(1)],  # Mínimo 1 producto
         verbose_name='Cantidad',
         null=False
     )
+    
+    # Campos de cálculo financiero
     subtotal = models.DecimalField(
         max_digits=10,
         decimal_places=2,
-        validators=[MinValueValidator(0)],
+        validators=[MinValueValidator(0)],  # Subtotal no puede ser negativo
         null=False
     )
     isv = models.DecimalField(
         max_digits=10,
         decimal_places=2,
         verbose_name='ISV',
-        validators=[MinValueValidator(0)],
+        validators=[MinValueValidator(0)],  # ISV no puede ser negativo
         null=False
     )
     envio = models.DecimalField(
         max_digits=10,
         decimal_places=2,
         verbose_name='Envío',
-        validators=[MinValueValidator(0)],
+        validators=[MinValueValidator(0)],  # Envío no puede ser negativo
         null=False
     )
     total = models.DecimalField(
         max_digits=10,
         decimal_places=2,
-        validators=[MinValueValidator(0)],
+        validators=[MinValueValidator(0)],  # Total no puede ser negativo
         null=False
     )
     
@@ -373,7 +491,14 @@ class PedidoDetalle(models.Model):
         verbose_name_plural = 'Detalles de Pedido'
     
     def save(self, *args, **kwargs):
-        """Calcula automáticamente los valores antes de guardar"""
+        """
+        Calcula automáticamente los valores antes de guardar.
+        
+        Lógica:
+        - Para movimientos internos: todos los valores monetarios son 0.00
+        - Para pedidos regulares: calcula subtotal, ISV, envío y total
+        - El envío se mantiene si ya fue proporcionado por el frontend
+        """
         from decimal import Decimal
         
         # Si es un movimiento interno, todos los valores monetarios son 0.00
@@ -385,7 +510,7 @@ class PedidoDetalle(models.Model):
         else:
             # Cálculos normales para pedidos regulares
             self.subtotal = self.producto.precio * Decimal(str(self.cantidad_prod))
-            self.isv = self.subtotal * Decimal('0.15')
+            self.isv = self.subtotal * Decimal('0.15')  # 15% de ISV
             
             # Mantener el valor de envío que viene del frontend si ya existe
             if not hasattr(self, 'envio') or self.envio is None:
@@ -403,57 +528,96 @@ class PedidoDetalle(models.Model):
     
     def __str__(self):
         return f"Detalle #{self.id} - {self.cantidad_prod}x {self.producto.nombre}"
-    
-    ##Nuevo manejo de stock con tabla de registros temporal
 
+# =============================================================================
+# MODELO DE CARRITO TEMPORAL
+# =============================================================================
 class CarritoTemp(models.Model):
-    """Modelo para el carrito temporal de compras"""
+    """
+    Modelo para el carrito temporal de compras.
+    
+    Características principales:
+    - Gestión de carrito de compras temporal
+    - Reserva de stock automática
+    - Sistema de expiración de carritos
+    - Verificación de disponibilidad de stock
+    - Notificaciones en tiempo real
+    
+    Funcionalidades:
+    - Reserva temporal de productos en el carrito
+    - Verificación automática de stock disponible
+    - Expiración automática después de inactividad
+    - Liberación automática de stock reservado
+    """
+    
+    # Identificador único del carrito temporal
     id = models.AutoField(primary_key=True)
+    
+    # Relación con el usuario propietario del carrito
     usuario = models.ForeignKey(
         Usuario,
         on_delete=models.CASCADE,
         related_name='carritos_temp',
         verbose_name='Usuario'
     )
+    
+    # Producto en el carrito
     producto = models.ForeignKey(
         Producto,
         on_delete=models.CASCADE,
         related_name='carritos_temp',
         verbose_name='Producto'
     )
+    
+    # Cantidad que el usuario quiere comprar
     cantidad_prod = models.PositiveIntegerField(
-        validators=[MinValueValidator(1)],
+        validators=[MinValueValidator(1)],  # Mínimo 1 producto
         verbose_name='Cantidad en Carrito'
     )
+    
+    # Cantidad temporalmente reservada del stock
     cantidad_temp = models.PositiveIntegerField(
-        validators=[MinValueValidator(1)],
+        validators=[MinValueValidator(1)],  # Mínimo 1 producto reservado
         verbose_name='Cantidad Temporal (reservado)'
     )
+    
+    # Fechas de control
     fecha_creacion = models.DateTimeField(
         auto_now_add=True,
         verbose_name='Fecha de Creación'
     )
     fecha_actualizacion = models.DateTimeField(
-        auto_now=True, # Usaremos este campo para la verificación de inactividad
+        auto_now=True,  # Se actualiza automáticamente en cada modificación
         verbose_name='Fecha de Actualización'
     )
+    
+    # Estado de expiración del carrito
     expirado = models.BooleanField(
         default=False,
         verbose_name='¿Expirado?'
     )
-    #ultima_verificacion = models.DateTimeField( # Comentado, se prefiere fecha_actualizacion
+    
+    # Campo comentado - se prefiere usar fecha_actualizacion
+    # ultima_verificacion = models.DateTimeField(
     #    auto_now_add=True,
     #    verbose_name='Última Verificación'
-    #)
+    # )
 
     class Meta:
         verbose_name = 'Carrito Temporal'
         verbose_name_plural = 'Carritos Temporales'
-        unique_together = ['usuario', 'producto']
-        ordering = ['-fecha_actualizacion']
+        unique_together = ['usuario', 'producto']  # Un usuario solo puede tener un carrito por producto
+        ordering = ['-fecha_actualizacion']  # Ordenar por fecha de actualización descendente
 
     def save(self, *args, **kwargs):
-        """Maneja la lógica de reserva de stock al guardar"""
+        """
+        Maneja la lógica de reserva de stock al guardar.
+        
+        Lógica:
+        - Para nuevos registros: verifica stock y reserva cantidad
+        - Para actualizaciones: ajusta la reserva según la diferencia
+        - Valida que haya suficiente stock disponible
+        """
         # Si es un nuevo registro
         if not self.pk:
             # Verificar stock disponible
@@ -462,7 +626,7 @@ class CarritoTemp(models.Model):
             
             # Reservar el stock temporalmente
             self.cantidad_temp = self.cantidad_prod
-            #self.producto.cantidad_en_stock -= self.cantidad_temp
+            # Nota: El stock no se reduce físicamente, solo se reserva lógicamente
             self.producto.save()
         else:
             # Si es una actualización
@@ -473,11 +637,11 @@ class CarritoTemp(models.Model):
                 # Si se aumenta la cantidad
                 if self.producto.cantidad_en_stock < diferencia:
                     raise ValidationError('No hay suficiente stock disponible')
-                #self.producto.cantidad_en_stock -= diferencia
+                # Nota: El stock no se reduce físicamente
                 self.cantidad_temp = self.cantidad_prod
             elif diferencia < 0:
                 # Si se reduce la cantidad
-                #self.producto.cantidad_en_stock += diferencia
+                # Nota: El stock no se incrementa físicamente
                 self.cantidad_temp = self.cantidad_prod
             
             self.producto.save()
@@ -485,7 +649,12 @@ class CarritoTemp(models.Model):
         super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
-        """Devuelve el stock al eliminar el registro"""
+        """
+        Devuelve el stock al eliminar el registro.
+        
+        Nota: Actualmente comentado para evitar problemas de concurrencia.
+        El stock se libera automáticamente por el sistema de expiración.
+        """
         # Solo devolver el stock si no está expirado y hay cantidad temporal
         # if not self.expirado and self.cantidad_temp > 0:
         #     self.producto.cantidad_en_stock += self.cantidad_temp
@@ -493,17 +662,26 @@ class CarritoTemp(models.Model):
         super().delete(*args, **kwargs)
 
     def __str__(self):
+        """Representación en string del carrito temporal"""
         return f"Carrito de {self.usuario.nombre_cliente} - {self.producto.nombre}"
 
     def verificar_carrito(self):
         """
         Verifica el estado del carrito y ajusta la cantidad si excede el stock disponible.
-        Retorna True si el item es válido y ajustado, False si el producto no existe o está completamente sin stock.
+        
+        Returns:
+            bool: True si el item es válido y ajustado, False si el producto no existe o está sin stock.
+        
+        Lógica:
+        - Verifica si el producto existe
+        - Ajusta cantidad si excede el stock disponible
+        - Marca como expirado si no hay stock
+        - Libera stock reservado si es necesario
         """
         if not self.producto:
             self.expirado = True
             self.save()
-            return False # Producto no existe, marcar como no válido
+            return False  # Producto no existe, marcar como no válido
 
         if self.cantidad_prod > self.producto.cantidad_en_stock:
             # Si la cantidad en carrito es mayor que el stock disponible
@@ -511,38 +689,44 @@ class CarritoTemp(models.Model):
                 # Ajustar cantidad al stock disponible
                 self.cantidad_prod = self.producto.cantidad_en_stock
                 self.cantidad_temp = self.cantidad_prod
-                self.expirado = False # Asegurarse de que no esté marcado como expirado si se ajustó
+                self.expirado = False  # Asegurarse de que no esté marcado como expirado si se ajustó
                 self.save()
-                return True # Válido con cantidad ajustada
+                return True  # Válido con cantidad ajustada
             else:
                 # Stock es 0, el producto está completamente sin stock
                 self.expirado = True
-                if self.cantidad_temp > 0: # Devuelve cualquier stock reservado si lo había
+                if self.cantidad_temp > 0:  # Devuelve cualquier stock reservado si lo había
                     self.producto.cantidad_en_stock += self.cantidad_temp
                     self.producto.save()
                 self.cantidad_temp = 0
                 self.save()
-                return False # No válido (sin stock)
+                return False  # No válido (sin stock)
         
         # Si cantidad_prod es <= stock disponible, es válido.
         # Asegurarse que cantidad_temp sea igual a cantidad_prod y no esté expirado.
         if self.cantidad_temp != self.cantidad_prod or self.expirado:
             self.cantidad_temp = self.cantidad_prod
             self.expirado = False
-            self.save()
-        return True
-
 
     def expiracion(self):
         """
-        Verifica si el carrito ha expirado por inactividad (ej. 60 segundos)
+        Verifica si el carrito ha expirado por inactividad (ej. 180 segundos)
         y devuelve el stock al producto si expira.
+        
+        Returns:
+            bool: True si el carrito ha expirado, False si aún es válido
+            
+        Lógica:
+        - Verifica si ya está marcado como expirado
+        - Calcula el tiempo de inactividad desde la última actualización
+        - Marca como expirado si supera el tiempo límite
+        - Libera el stock reservado si expira
         """
         # Si ya está expirado, no hacer nada
         if self.expirado:
-            return True # Ya está expirado
+            return True  # Ya está expirado
 
-        # Definir el tiempo de inactividad permitido (ej. 60 segundos)
+        # Definir el tiempo de inactividad permitido (180 segundos = 3 minutos)
         tiempo_inactividad_permitida = timedelta(seconds=180) 
         
         # Comprobar si ha pasado el tiempo de inactividad desde la última actualización
@@ -552,26 +736,38 @@ class CarritoTemp(models.Model):
             
             # Devolver el stock reservado al producto
             if self.cantidad_temp > 0:
-                #self.producto.cantidad_en_stock += self.cantidad_temp
+                # Nota: Comentado para evitar problemas de concurrencia
+                # self.producto.cantidad_en_stock += self.cantidad_temp
                 self.producto.save()
-                self.cantidad_temp = 0 # Resetear cantidad temporal después de devolver stock
+                self.cantidad_temp = 0  # Resetear cantidad temporal después de devolver stock
 
-            self.save() # Guardar la instancia de CarritoTemp para marcarla como expirada
-            return True # Ha expirado
+            self.save()  # Guardar la instancia de CarritoTemp para marcarla como expirada
+            return True  # Ha expirado
             
-        return False # No ha expirado por tiempo
-
+        return False  # No ha expirado por tiempo
 
     @classmethod
     def verificar_expiracion_carrito(cls, usuario):
         """
         Verifica la expiración y stock de todos los productos en el carrito de un usuario.
-        Retorna una lista de diccionarios con información de productos expirados o ajustados.
+        
+        Args:
+            usuario: Instancia del usuario cuyo carrito se va a verificar
+            
+        Returns:
+            list: Lista de diccionarios con información de productos expirados o ajustados
+            
+        Lógica:
+        - Obtiene todos los carritos del usuario
+        - Verifica stock disponible para cada producto
+        - Verifica expiración por tiempo de inactividad
+        - Retorna lista con cambios realizados
         """
         carritos_actuales = cls.objects.filter(usuario=usuario)
         productos_expirados_o_ajustados = []
         
         for carrito_item in carritos_actuales:
+            # Guardar valores originales para comparación
             original_cantidad_prod = carrito_item.cantidad_prod
             original_expirado = carrito_item.expirado
 
@@ -587,7 +783,7 @@ class CarritoTemp(models.Model):
                     'cantidad_actual': carrito_item.cantidad_prod,
                     'motivo': 'sin_stock_o_producto_no_existe'
                 })
-                continue # Pasar al siguiente item si ya se manejó
+                continue  # Pasar al siguiente item si ya se manejó
 
             # Luego, verificar la expiración por inactividad
             if carrito_item.expiracion():

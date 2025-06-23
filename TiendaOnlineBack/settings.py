@@ -12,63 +12,93 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 
+# =============================================================================
+# CONFIGURACIÓN DE RUTAS BASE
+# =============================================================================
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
+# Define la ruta base del proyecto para construir rutas relativas
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
+# =============================================================================
+# CONFIGURACIÓN DE SEGURIDAD Y DESARROLLO
+# =============================================================================
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
+# Clave secreta para encriptación de sesiones y tokens - CAMBIAR EN PRODUCCIÓN
 SECRET_KEY = 'django-insecure-(7*ji_&j0j!b2*+n86_@q^96g2^&wfex6psuoz25r6#&%^(p$-'
 
 # SECURITY WARNING: don't run with debug turned on in production!
+# Modo debug - DESHABILITAR EN PRODUCCIÓN para seguridad
 DEBUG = True
 
+# Dominios permitidos para acceder a la aplicación
+# En producción, especificar solo los dominios reales
 ALLOWED_HOSTS = [
-    'tiendaonline-backend-yaoo.onrender.com',
-    'sage-cannoli-55f8a1.netlify.app',
-    'localhost',
-    '127.0.0.1',
+    'tiendaonline-backend-yaoo.onrender.com',  # Backend en Render
+    'sage-cannoli-55f8a1.netlify.app',        # Frontend en Netlify
+    'localhost',                               # Desarrollo local
+    '127.0.0.1',                              # Desarrollo local alternativo
 ]
 
+# =============================================================================
+# CONFIGURACIÓN DE APLICACIONES INSTALADAS
+# =============================================================================
 # Application definition
-
+# Lista de todas las aplicaciones Django instaladas en el proyecto
 INSTALLED_APPS = [
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
-    'rest_framework',    
-    'corsheaders',
-    'TiendaOnline',
-    'coreapi',    
-    'rest_framework.authtoken',
-    'django_apscheduler',        
-    'pusher'    
+    # Aplicaciones core de Django
+    'django.contrib.admin',           # Panel de administración
+    'django.contrib.auth',            # Sistema de autenticación
+    'django.contrib.contenttypes',    # Sistema de tipos de contenido
+    'django.contrib.sessions',        # Sistema de sesiones
+    'django.contrib.messages',        # Sistema de mensajes
+    'django.contrib.staticfiles',     # Manejo de archivos estáticos
+    
+    # Aplicaciones de terceros
+    'rest_framework',                 # Framework para APIs REST
+    'corsheaders',                    # Manejo de CORS para APIs
+    'coreapi',                        # Documentación automática de APIs
+    'rest_framework.authtoken',       # Autenticación por tokens
+    'django_apscheduler',             # Programador de tareas
+    'pusher',                         # Comunicación en tiempo real
+    
+    # Aplicaciones del proyecto
+    'TiendaOnline',                   # Aplicación principal de la tienda
 ]
 
+# =============================================================================
+# CONFIGURACIÓN DE PUSHER (COMUNICACIÓN EN TIEMPO REAL)
+# =============================================================================
+# Credenciales de Pusher para notificaciones push y comunicación en tiempo real
 PUSHER_APP_ID = '2010728'
 PUSHER_KEY = '4dbce86002977a403278'
 PUSHER_SECRET = '6efbbe4acbb21582c7e5'
 PUSHER_CLUSTER = 'us2'
 
-
+# =============================================================================
+# CONFIGURACIÓN DE MIDDLEWARE
+# =============================================================================
+# Middleware que se ejecuta en cada request
 MIDDLEWARE = [
-    'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',  
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'django.middleware.security.SecurityMiddleware',      # Seguridad básica
+    'django.contrib.sessions.middleware.SessionMiddleware', # Manejo de sesiones
+    'corsheaders.middleware.CorsMiddleware',              # CORS - DEBE IR ANTES DE CommonMiddleware
+    'django.middleware.common.CommonMiddleware',          # Funcionalidad común
+    'django.middleware.csrf.CsrfViewMiddleware',          # Protección CSRF
+    'django.contrib.auth.middleware.AuthenticationMiddleware', # Autenticación
+    'django.contrib.messages.middleware.MessageMiddleware',    # Mensajes
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',  # Protección clickjacking
 ]
 
+# =============================================================================
+# CONFIGURACIÓN DE URLS Y TEMPLATES
+# =============================================================================
+# Archivo principal de URLs del proyecto
 ROOT_URLCONF = 'TiendaOnlineBack.urls'
 
+# Configuración de templates
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -84,12 +114,16 @@ TEMPLATES = [
     },
 ]
 
+# Aplicación WSGI para despliegue
 WSGI_APPLICATION = 'TiendaOnlineBack.wsgi.application'
 
-
+# =============================================================================
+# CONFIGURACIÓN DE BASE DE DATOS
+# =============================================================================
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+# Configuración anterior comentada (backup)
 # DATABASES = {
 #     'default': {
 #         'ENGINE': 'django.db.backends.mysql',
@@ -105,26 +139,29 @@ WSGI_APPLICATION = 'TiendaOnlineBack.wsgi.application'
 #     }
 # }
 
-
+# Configuración actual de base de datos MySQL en Railway
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'uth_florida_university',
-        'USER': 'root',
-        'PASSWORD': 'CVQBpvjbIdCszvCRlsczizoiPPbakZuY',
-        'HOST': 'ballast.proxy.rlwy.net',
-        'PORT': '19601',
+        'ENGINE': 'django.db.backends.mysql',              # Motor de base de datos
+        'NAME': 'uth_florida_university',                  # Nombre de la base de datos
+        'USER': 'root',                                    # Usuario de la base de datos
+        'PASSWORD': 'CVQBpvjbIdCszvCRlsczizoiPPbakZuY',   # Contraseña
+        'HOST': 'ballast.proxy.rlwy.net',                  # Host de Railway
+        'PORT': '19601',                                   # Puerto de Railway
         'OPTIONS': {
-            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
-            'charset': 'utf8',
+            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",  # Modo SQL estricto
+            'charset': 'utf8',                             # Codificación de caracteres
         },
     }
 }
 
-
+# =============================================================================
+# CONFIGURACIÓN DE VALIDACIÓN DE CONTRASEÑAS
+# =============================================================================
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
 
+# Validadores de contraseñas para mayor seguridad
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
@@ -139,95 +176,117 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
 ]
+
+# Modelo de usuario personalizado
 AUTH_USER_MODEL = 'TiendaOnline.Usuario'
 
+# =============================================================================
+# CONFIGURACIÓN DE INTERNACIONALIZACIÓN
+# =============================================================================
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
-LANGUAGE_CODE = 'es-es'
+LANGUAGE_CODE = 'es-es'    # Idioma español
+TIME_ZONE = 'UTC'          # Zona horaria UTC
+USE_I18N = True            # Habilitar internacionalización
+USE_TZ = True              # Habilitar manejo de zonas horarias
 
-TIME_ZONE = 'UTC'
-
-USE_I18N = True
-
-USE_TZ = True
-
-
+# =============================================================================
+# CONFIGURACIÓN DE ARCHIVOS ESTÁTICOS
+# =============================================================================
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = 'static/'     # URL para archivos estáticos
 
+# =============================================================================
+# CONFIGURACIÓN DE CAMPOS PRIMARIOS
+# =============================================================================
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'  # Campo ID automático
 
-# #quien puede acceder a la api
+# =============================================================================
+# CONFIGURACIÓN DE CORS (CROSS-ORIGIN RESOURCE SHARING)
+# =============================================================================
+# Configuración de CORS para permitir acceso desde el frontend
+# CORS_ALLOWED_ORIGINS: Lista de orígenes permitidos específicos
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "https://sage-cannoli-55f8a1.netlify.app",
-    "https://tiendaonline-backend-yaoo.onrender.com",
-    "http://localhost:8000",
+    "http://localhost:5173",                              # Frontend local (Vite)
+    "https://sage-cannoli-55f8a1.netlify.app",           # Frontend en Netlify
+    "https://tiendaonline-backend-yaoo.onrender.com",    # Backend en Render
+    "http://localhost:8000",                              # Backend local
 ]
 
+# Permitir todos los orígenes (SOLO PARA DESARROLLO - CAMBIAR EN PRODUCCIÓN)
 CORS_ALLOW_ALL_ORIGINS = True
 
-#Metodos permitidos para la api
+# Métodos HTTP permitidos para CORS
 CORS_ALLOW_METHODS = [
-    'GET',
-    'POST',
-    'PUT',
-    'DELETE',    
-    'PATCH',
-    'OPTIONS',
+    'GET',      # Obtener datos
+    'POST',     # Crear datos
+    'PUT',      # Actualizar datos completos
+    'DELETE',   # Eliminar datos
+    'PATCH',    # Actualizar datos parciales
+    'OPTIONS',  # Preflight requests
 ]
 
+# Headers permitidos para CORS
 CORS_ALLOW_HEADERS = [
     'accept',
     'accept-encoding',
-    'authorization',
-    'content-type',
+    'authorization',    # Para autenticación
+    'content-type',     # Tipo de contenido
     'dnt',
     'origin',
     'user-agent',
-    'x-csrftoken',
+    'x-csrftoken',      # Token CSRF
     'x-requested-with',
 ]
 
+# =============================================================================
+# CONFIGURACIÓN DE DJANGO REST FRAMEWORK
+# =============================================================================
+# Configuración específica para APIs REST
 REST_FRAMEWORK = {
-    'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.coreapi.AutoSchema',
+    'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.coreapi.AutoSchema',  # Documentación automática
     'DEFAULT_PARSER_CLASSES': [
-        'rest_framework.parsers.JSONParser',
-        'rest_framework.parsers.MultiPartParser',
-        'rest_framework.parsers.FormParser',
+        'rest_framework.parsers.JSONParser',        # Parsear JSON
+        'rest_framework.parsers.MultiPartParser',   # Parsear formularios multipart
+        'rest_framework.parsers.FormParser',        # Parsear formularios
     ],
     'DEFAULT_RENDERER_CLASSES': [
-        'rest_framework.renderers.JSONRenderer',
-        'rest_framework.renderers.BrowsableAPIRenderer',
+        'rest_framework.renderers.JSONRenderer',           # Renderizar JSON
+        'rest_framework.renderers.BrowsableAPIRenderer',  # Interfaz web para APIs
     ],
-    
 }
 
-
-
+# =============================================================================
+# CONFIGURACIÓN DE SEGURIDAD CSRF
+# =============================================================================
+# Orígenes confiables para CSRF (Cross-Site Request Forgery)
 CSRF_TRUSTED_ORIGINS = [
-    'https://tiendaonline-backend-yaoo.onrender.com', # Corregido el dominio de render
-    'https://sage-cannoli-55f8a1.netlify.app',
-    'https://www.sandbox.paypal.com',
-    'http://localhost:5173', # Añadir tu origen de desarrollo local aquí
-    'http://127.0.0.1:5173', # Considera añadir 127.0.0.1 también
+    'https://tiendaonline-backend-yaoo.onrender.com',     # Backend en Render
+    'https://sage-cannoli-55f8a1.netlify.app',           # Frontend en Netlify
+    'https://www.sandbox.paypal.com',                     # PayPal Sandbox
+    'http://localhost:5173',                              # Frontend local
+    'http://127.0.0.1:5173',                             # Frontend local alternativo
 ]
 
-CSRF_COOKIE_SECURE = True    
-SESSION_COOKIE_SECURE = True
+# Configuración de cookies seguras para HTTPS
+CSRF_COOKIE_SECURE = True     # Cookies CSRF solo por HTTPS
+SESSION_COOKIE_SECURE = True  # Cookies de sesión solo por HTTPS
 
-# Configuración de APScheduler
+# =============================================================================
+# CONFIGURACIÓN DE APSCHEDULER (PROGRAMADOR DE TAREAS)
+# =============================================================================
+# Configuración para tareas programadas automáticas
 SCHEDULER_CONFIG = {
     "apscheduler.jobstores.default": {
-        "class": "django_apscheduler.jobstores:DjangoJobStore"
+        "class": "django_apscheduler.jobstores:DjangoJobStore"  # Almacenar jobs en BD
     },
     'apscheduler.executors.processpool': {
-        "type": "threadpool"
+        "type": "threadpool"  # Usar threadpool para ejecutar tareas
     },
 }
